@@ -6,7 +6,7 @@
 /*   By: junji <junji@student.42seoul.kr>           +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/06/02 14:01:18 by junji             #+#    #+#             */
-/*   Updated: 2022/06/02 14:01:37 by junji            ###   ########.fr       */
+/*   Updated: 2022/07/11 14:39:55 by junji            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,6 +26,7 @@ char	*store_line(int fd, char *buffer)
 		if (read_size <= 0)
 		{
 			free(temp);
+			//
 			return (buffer);
 		}
 		temp[read_size] = 0;
@@ -83,7 +84,10 @@ char	*get_next_line(int fd)
 		return (0);
 	buffer = store_line(fd, buffer);
 	if (!buffer)
+	{
+		//
 		return (0);
+	}
 	line = extract_line(buffer);
 	buffer = store_next_line(buffer);
 	return (line);
