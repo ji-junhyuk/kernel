@@ -1,11 +1,24 @@
 #include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <string.h>
+#include <fcntl.h>
 
-#ifndef OPEN_MAX
-# define OPEN_MAX 512
-#endif
+char *get_next_line(int fd);
 
 int main(void)
 {
-	printf("%d\n", OPEN_MAX);
-}
+	int fd;
+	char	*line;
 
+	fd = open("junji", O_RDONLY);
+	while (1)
+	{
+		line = get_next_line(fd);
+		printf("line: %s", line);
+		if (!line)
+			break ;
+		free(line);
+	}
+	return (0);
+}
