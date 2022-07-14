@@ -8,10 +8,10 @@ char *get_next_line(int fd);
 int main() 
 {
 	char	*line;
-	int		fd;
 	int		idx = 0;
+	int fd;
 
-    fd = open("test1.txt", O_RDONLY);
+ 	fd = open("test1.txt", O_RDONLY);
     while (1)
     {
 		printf("get_next_line()\n");
@@ -21,8 +21,7 @@ int main()
     	printf("\n>>>main line %d<<< %s", ++idx, line);	
         free(line);
     }
-    free(line);
-	close(fd);
-	system("leaks a.out");
+    //free(line);
+	//close(fd);
     return (0);
 }

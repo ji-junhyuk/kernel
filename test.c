@@ -12,6 +12,7 @@ int main(void)
 	char	*line;
 
 	fd = open("junji", O_RDONLY);
+//	fd = 0;
 	while (1)
 	{
 		line = get_next_line(fd);
@@ -20,5 +21,6 @@ int main(void)
 			break ;
 		free(line);
 	}
+//	system("leaks a.out > leaks_result; cat leaks_result | grep leaked && rm -rf leaks_result");
 	return (0);
 }

@@ -53,7 +53,7 @@
 
 ### 1. FD table
 - File Descriptor Table이며, 머신 단위가 아니라 프로세스 단위로 할당되는 테이블
-- 프로세스가 생성되면 기본적으로 0(stdin, 표준 입력), 1(stdout, 표준 출력), 2(stderr, 표준 에러) index가 활성화된다. 해당 공간에는 File table의 주소를 갖게 된다.
+- 프로세스가 생성되면 기본적으로 0(stdin, 표준 입력), 1(stdout, 표준 출력), 2(stderr, 표준 에러) `index`가 활성화된다. 해당 공간에는 `File table의 주소`를 갖게 된다.
 
 ### 2. File table
 - FD Table이 프로세스 단위로 할당되었다면, File Table은 머신 단위의 할당으로 생성된다. 
@@ -91,7 +91,33 @@ $ getconf OPEN_MAX
 ### 예외처리
 - malloc 할당 실패 시.
 - BUFFER_SIZE가 0 이하일 때.
- 
+
+### 운영체제
+- 컴퓨터는 크게 하드웨어와 소프트웨어로 구분된다.
+- 소프트웨어는 운영체제와 응용 프로그램으로 다시 구분된다.
+- 운영체제는 커널과 시스템 프로그램으로 구분된다.
+cf. 커널과 함께 시스템 프로그램, 뿐만 아니라 이들을 쉽게 설치할 수 있는 기능까지 제공하는 것을 '배포판'이라고 한다.
+- '운영체제'는 커널과 함께 사용자 편의를 위한 시스템 프로그램을 포함한다.
+- '커널'은 컴퓨터 자원을 관리하는 운영체제의 핵심 부분을 말한다.
+	- 추상화란 물리적으로 하나 뿐인 하드웨어를 여러 사용자들이 번갈아 사용하게 중재함으로서, 마치 한 개의 하드웨어가 여러개인 것처럼 보여지도록 하는 기술을 말한다.
+	- 커널이 추상화하여 관리하는 물리적 자원들과 이를 추상화한 자원을 칭하는 용어 간 대응 관계는 아래와 같다.
+```
+CPU : 태스크(task)
+
+메모리 : 페이지(page), 세그먼트(segment)
+
+디스크 : 파일(file)
+
+네트워크 : 소켓(socket)
+```
+
+- 커널을 구성하는 자원 관리자들은 아래와 같이 크게 5가지
+	1. 태스크(task)관리자
+	2. 메모리(memory)관리자
+	3. 파일 시스템(file system)관리자
+	4. 네트워크(network)관리자
+	5. 디바이스 드라이버(device driver)관리자
+- 커널은 사용자가 물리적인 하드웨어에 접근하고 사용할 수 있도록 돕는 역할을 한다.
 #include <unistd.h>
 ### 참고자료
 - CTRL-C와 CTRL-D의 차이 https://superuser.com/questions/169051/whats-the-difference-between-c-and-d-for-unix-mac-os-x-terminal#:~:text=Ctrl%20C%20tells%20the%20terminal,as%20a%20desire%20to%20exit.
@@ -99,3 +125,4 @@ $ getconf OPEN_MAX
 - bash 리다이렉션 https://bio-info.tistory.com/87
 - FD가 할당되는 과정 https://m.blog.naver.com/songblue61/221391888403
 - 파일 등등 https://bigpel66.oopy.io/library/42/inner-circle/3 
+- 커널의 개념과 커널의 구조 https://5equal0.tistory.com/entry/Linux-Kernel-%EC%BB%A4%EB%84%90%EC%9D%98-%EA%B0%9C%EB%85%90%EA%B3%BC-%EC%BB%A4%EB%84%90%EC%9D%98-%EA%B5%AC%EC%A1%B0
