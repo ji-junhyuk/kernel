@@ -1,16 +1,16 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   get_next_line_utils.c                              :+:      :+:    :+:   */
+/*   get_next_line_utils_bonus.c                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: junji <marvin@42.fr>                       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/07/15 14:12:30 by junji             #+#    #+#             */
-/*   Updated: 2022/07/15 15:38:40 by junji            ###   ########.fr       */
+/*   Updated: 2022/07/15 15:37:52 by junji            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "get_next_line.h"
+#include "get_next_line_bonus.h"
 
 char	*ft_strchr(const char *s, int c)
 {
@@ -29,10 +29,10 @@ char	*ft_strchr(const char *s, int c)
 
 size_t	ft_strlen(const char *s)
 {
-	size_t	len;
-
 	if (!s)
 		return (0);
+	size_t	len;
+
 	len = 0;
 	while (s[len])
 		++len;

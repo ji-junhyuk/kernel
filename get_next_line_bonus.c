@@ -1,16 +1,16 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   get_next_line.c                                    :+:      :+:    :+:   */
+/*   get_next_line_bonus.c                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: junji <marvin@42.fr>                       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/07/15 15:15:52 by junji             #+#    #+#             */
-/*   Updated: 2022/07/15 15:48:13 by junji            ###   ########.fr       */
+/*   Updated: 2022/07/15 16:09:14 by junji            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "get_next_line.h"
+#include "get_next_line_bonus.h"
 
 char	*read_line(int fd, char *buffer)
 {
@@ -84,15 +84,15 @@ char	*change_next_line(char *buffer)
 
 char	*get_next_line(int fd)
 {
-	static char		*buffer;
+	static char		*buffer[OPEN_MAX];
 	char			*line;
 
-	if (fd < 0 && BUFFER_SIZE <= 0)
+	if (fd < 0 && BUFFER_SIZE <= 0 && fd > OPEN_MAX)
 		return (0);
-	buffer = read_line(fd, buffer);
-	if (!buffer)
+	buffer[fd] = read_line(fd, buffer[fd]);
+	if (!buffer[fd])
 		return (0);
-	line = extract_line(buffer);
-	buffer = change_next_line(buffer);
+	line = extract_line(buffer[fd]);
+	buffer[fd] = change_next_line(buffer[fd]);
 	return (line);
 }
