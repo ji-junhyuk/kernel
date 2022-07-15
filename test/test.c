@@ -24,3 +24,4 @@ int main(void)
 //	system("leaks a.out > leaks_result; cat leaks_result | grep leaked && rm -rf leaks_result");
 	return (0);
 }
+

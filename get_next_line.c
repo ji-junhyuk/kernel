@@ -20,6 +20,7 @@ char *read_line(int fd, char *buffer)
 		if (ft_strchr(temp, '\n'))
 			break ;
 		read_size = read(fd, temp, BUFFER_SIZE);
+		temp[read_size] = '\0';
 	}
 	free(temp);
 	return (buffer);
@@ -59,13 +60,13 @@ char *point_next_line(char *buffer)
 		free(buffer - len);
 		return (0);
 	}
-	next_line = ft_substr(buffer, len + 1, ft_strlen(buffer + len + 1));
+	next_line = ft_substr(buffer, 1, ft_strlen(buffer + 1));
 	if (!next_line)
 	{
-		free(buffer);
+		free(buffer - len);
 		return (0);
 	}
-	free(buffer);
+	free(buffer - len);
 	return (next_line);
 }
 
