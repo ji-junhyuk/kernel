@@ -58,7 +58,7 @@ char	*ft_substr(char const *s, unsigned int start, size_t len)
 	size_t	idx;
 
 	copy = malloc(sizeof(char) * (len + 1));
-	if (!copy)
+	if (!copy || !len)
 		return (0);
 	idx = -1;
 	while (++idx < len)
