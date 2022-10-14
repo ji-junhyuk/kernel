@@ -1,3 +1,12 @@
+<!-- vim-markdown-toc GFM -->
+
+* [Linux Introduction and Prospects](#linux-introduction-and-prospects)
+		* [대상](#대상)
+		* [책을 공부하는 방법](#책을-공부하는-방법)
+		* [리눅스를 왜 배워야 할까?](#리눅스를-왜-배워야-할까)
+		* [리눅스 커널은 왜 배워야 할까?](#리눅스-커널은-왜-배워야-할까)
+
+<!-- vim-markdown-toc -->
 # Linux Introduction and Prospects
 
 ### 대상
