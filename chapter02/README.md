@@ -1,3 +1,12 @@
+- [Raspberry Pi settings](#raspberry-pi-settings)
+	* [명령어](#명령어)
+	* [라즈베리 파이 설치 과정은 왜 배워야 할까?](#라즈베리-파이-설치-과정은-왜-배워야-할까)
+	* [라즈베리 파이 설치](#라즈베리-파이-설치)
+	* [설정](#설정)
+	* [pi 이름 변경하기](#pi-이름-변경하기)
+	* [설치 순서](#설치-순서)
+	* [리눅스 커널 소스의 구조](#리눅스-커널-소스의-구조)
+	* [objdump](#objdump)
 # Raspberry Pi settings
 
 ### 명령어
@@ -32,6 +41,32 @@ $ sudo apt-get install fonts-unfonts-core
 $ sudo apt-get update && sudo apt-get upgrade
 ```
 - raspi-config: `en_GB.UTF-8 UTF-8`, `en_US.UTF-8 UTF-8`, `ko_kr.UTF-8 UTF-8`
+
+### pi 이름 변경하기
+- 계정을 변경하기 위해선, 그 계정에서 실행되는 모든 프로세스가 종료되어야 함.
+1. 다른 temp 계정을 만든다
+```bash
+$ adduser [temp]
+```
+- reboot 후 temp로 로그인한다.
+(desktop gui를 지원하는 환경에서는 pi프로세스를 완전히 종료하기 위해 reboot함)
+
+2. temp로 로그인 후 root로 로그인한다. username 변경
+```bash
+$ sudo su
+$ usermod -l junto pi
+$ usermod -m -d /home/user newuser
+```
+
+3. pi 프로세스가 살아있다면, kill로 종료시킨다.
+```bash
+kill [pid]
+```
+
+4. temp 계정 삭제
+```bash
+$ sudo deluser -remove-all temp
+```
 
 ### 설치 순서
 https://www.raspberrypi.com/documentation/computers/linux_kernel.html#building
