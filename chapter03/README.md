@@ -1,3 +1,13 @@
+* [kernel debugging and code learning](#kernel-debugging-and-code-learning)
+	* [임베디드 리눅스 BSP 디버깅 툴](#임베디드-리눅스-bsp-디버깅-툴)
+	* [커널 로그 분석](#커널-로그-분석)
+	* ['cat /proc/interrupts' 디버깅](#cat-procinterrupts-디버깅)
+	* [디버깅 순서](#디버깅-순서)
+	* [ftrace 로그에서 알 수 있는 정보](#ftrace-로그에서-알-수-있는-정보)
+	* [단순히 코드 분석이 아닌 디버깅을 해야 하는 이유](#단순히-코드-분석이-아닌-디버깅을-해야-하는-이유)
+
+# kernel debugging and code learning
+
 ### 임베디드 리눅스 BSP 디버깅 툴
 - 로그기반
 	- UART 로그
