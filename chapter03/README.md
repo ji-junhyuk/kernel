@@ -12,7 +12,17 @@
 	* [dump_stack()](#dump_stack)
 		* [실습](#실습)
 		* [dump_stack()를 쓸 때 주의사항](#dump_stack를-쓸-때-주의사항)
-
+	* [ftrace](#ftrace)
+		* [커널 컨피그](#커널-컨피그)
+		* [ftrace 관련 디렉토리](#ftrace-관련-디렉토리)
+		* [ftrace 설정](#ftrace-설정)
+		* [1. tracing_on: 트레이서 활성화/비활성화하기](#1-tracing_on-트레이서-활성화비활성화하기)
+		* [2. current_tracer](#2-current_tracer)
+		* [3. event](#3-event)
+		* [4. filter](#4-filter)
+		* [5. func_stack_trace](#5-func_stack_trace)
+		* [6. sym-offset](#6-sym-offset)
+		* [7. 추가 설정 파일](#7-추가-설정-파일)
 # kernel debugging and code learning
 ## 디버깅
 ### 임베디드 리눅스 BSP 디버깅 툴
@@ -151,7 +161,96 @@ Hardware name: BCM 2835
 - 1초에 100번 이상 호출되는 함수에 dump_stack() 함수를 추가하면 시스템 응답속도가 매우 느려질 수 있음
 - 내부 동작
 	- 현재 실행 중인 프로세스 스택 주소를 읽어서 스택에 푸시된 프레임 포인터(Frame Pointer)레지스터를 읽음(printk보다 훨씬 많은 일)
-	- 함수 호출 내역을 추
+	- 함수 호출 내역을 추적
 - 다음과 같은 불편함
 	1. 함수 실행 빈도를 몰라 dump_stack()을 쓰기 두렵다.
 	2. 커널 코드에 dump_stack()함수를 추가하고 커널 빌드를 해야 한다.
+
+## ftrace
+- ftrace는 리눅스 커널에서 제공하는 가장 강력한 트레이서
+	- [Debugging the kernel using Ftrace](https://lwn.net/Articles/365835/)
+	- [part2](https://lwn.net/Articles/366796/)
+- 특징
+	- 인터럽트, 스케줄링, 커널 타이머 등의 커널 동작을 상세히 추적
+	- 함수 필터를 지정하면 지정한 함수를 호출한 함수와 전체 콜 스택까지 출력(코드 수정할 필요 없음
+	- 함수를 어느 프로세스가 실행하는지 확인
+	- 함수가 실행된 시각 정보 확인
+	- ftrace 로그를 활성화해도 시스템 동작에 부하를 거의 주지 않음
+	- 컨텍스트 정보와 CPU 번호 확인 
+
+### 커널 컨피그
+- 커널 설정 컨피그(configuration)를 활성
+- 라즈비안에서는 ftrace의 기본 기능이 모두 활성화돼 있음
+
+### ftrace 관련 디렉토리
+```bash
+$ cd /sys/kernel/debug/tracing
+```
+
+### ftrace 설정
+### 1. tracing_on: 트레이서 활성화/비활성화하기
+```bash
+echo 0 > /sys/kernel/debug/tracing/tracing_on
+echo 1 > /sys/kernel/debug/tracing/tracing_on 
+```
+	- tracing_on은 부팅 후 기본적으로 0으로 설정
+### 2. current_tracer
+```bash
+$ echo function > /sys/kernel/debug/tracing/current_tracer
+```
+	- ftrace는 nop, function, function_graph 트레이서를 제공
+	- nop: 기본 트레이서로써 ftrace 이벤트만 출력
+	- function: 함수 트레이서로 set_ftrace_filter로 지정한 함수를 누가 호출하는지 출력
+	- function_graph: 함수 실행 시간과 세부 호출 정보를 그래프 포맷으로 출력 
+### 3. event
+- 이벤트란 ftrace에서는 커널 서브시스템과 기능별로 세부 동작을 출력하는 기능을 지원
+- ftrace 이벤트를 모두 비활성화하는 코드
+```bash
+echo 0 > /sys/kernel/debug/tracing/events/enable
+```
+- sched_wakeup, sched_switch, irq_handler_entry, irq_handler_exit 이벤트 설정
+```bash
+echo 1 > /sys/kernel/debug/tracing/events/sched/sched_wakeup/enable
+echo 1 > /sys/kernel/debug/tracing/events/sched/sched_switch/enable
+echo 1 > /sys/kernel/debug/tracing/events/irq/irq_handler_entry/enable
+echo 1 > /sys/kernel/debug/tracing/events/irq/irq_handler_exit/enable
+```
+
+### 4. filter
+- set_ftrace_filterㄹ 파일에 트레이싱하고 싶은 함수 이름을 지정
+- set_ftrace_filter는 현재 트레이서를 function_graph과 function로 설정할 경우 작동하는 파일
+- 리눅스 커널에 존재하는 모든 함수를 필터로 지정할 수는 없고 available_filter_functions 파일에 포함된 함수만 지정
+- 라즈베리 파이에서 available_filter_functions 파일에 없는 함수를 set_ftrace_filter 파일에 지정하면 시스템은 락업
+- set_ftrace_filter 파일에 필터로 함수를 지정하지 않으면 모든 커널 함수를 트레이싱
+```bash
+echo secondary_start_kernel > /sys/kernel/debug/tracing/set_ftrace_filter
+echo schedule ttwu_do_wakeup > /sys/kernel/debug/tracing/set_ftrace_filter
+```
+
+### 5. func_stack_trace
+- option/func_stack_trace 파일을 1로 설정하면 ftrace를 통해 콜스택 확인
+
+### 6. sym-offset
+- option/sym-offset 파일을 1로 설정하면 ftrace를 통해 심벌 오프셋 확인
+- log
+	- do_sys_poll+0x3d8/0x500
+	- sys_poll+0x74/0x114
+		- 0x114: 이 함수의 전체 크기
+		- 0x74: sys_poll함수 시작 주소에서 0x74바이트 떨어진 곳에 do_sys_poll함수가 호출 됌.
+
+### 7. 추가 설정 파일
+- buffer_size_kb: ftrace 로그의 버퍼 크기이며, 킬로바이트 단위. ftrace 로그를 더 많이 저장하고 싶을 때 설정한다.
+- available_filter_functions: 트레이싱할 수 있는 함수 목록을 저장한 파일. 리눅스 드라이버나 커널에 새로운 함수를 새로 구현했으면 이 파일에 새롭게 작성한 함수의 이름을 볼 수 있음. 
+- event
+	- ftrace에서 제공하는 이벤트의 종류를 알 수 있는 디렉토리
+- sched
+	- 프로세스 스케줄링 동작과 스케줄링 프로파일링을 트레이싱하는 이벤트
+		- sched_switch: 컨텍스트 스위치 동작
+		- sched_wakeup: 프로세스를 깨우는 동작
+- irq
+	- 인터럽트와 소프트웨어 인터럽트를 트레이싱하는 이벤트
+		- irq_handler_entry: 인터럽트가 발생한 시각과 인터럽트 번호 및 이름을 출력
+		- irq_handler_exit: 인터럽트 핸들링이 완료
+		- softirq_raise: Soft IRQ 서비스 실행 요청
+		- softirq_entry: Soft IRQ 서비스 실행 시작
+		- softirq_exit : Soft IRQ 서비스 실행 완료
