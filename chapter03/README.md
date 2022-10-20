@@ -23,6 +23,8 @@
 		* [5. func_stack_trace](#5-func_stack_trace)
 		* [6. sym-offset](#6-sym-offset)
 		* [7. 추가 설정 파일](#7-추가-설정-파일)
+		* [ftrace 분석](#ftrace-분석)
+
 # kernel debugging and code learning
 ## 디버깅
 ### 임베디드 리눅스 BSP 디버깅 툴
@@ -254,3 +256,21 @@ echo schedule ttwu_do_wakeup > /sys/kernel/debug/tracing/set_ftrace_filter
 		- softirq_raise: Soft IRQ 서비스 실행 요청
 		- softirq_entry: Soft IRQ 서비스 실행 시작
 		- softirq_exit : Soft IRQ 서비스 실행 완료
+
+### ftrace 분석
+$ ./irq_setup_ftrace
+$ ./get_ftrace
+
+- log
+	- <idle>-0 
+		- 프로세스 이름, PID(0번)	
+	- [003] 
+		- CPU번호
+	- d.h.s.
+		- d: 현재 해당 CPU의 인터럽트 비활성화
+		- h: ftrace이벤트가 실행될 때 프로세스는 인터럽트 컨텍스트(인터럽트 처리중)
+		- s: soft irq서비스를 실행중
+	- 1339.468627
+		- timestamp(handler가 시작되고, 종료되는 시간을 유심히 볼 것)
+	- irq=36
+		- 36번째 인터럽트
