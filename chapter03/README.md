@@ -24,6 +24,7 @@
 		* [6. sym-offset](#6-sym-offset)
 		* [7. 추가 설정 파일](#7-추가-설정-파일)
 		* [ftrace 분석](#ftrace-분석)
+		* [TRACE32](#trace32)
 
 # kernel debugging and code learning
 ## 디버깅
@@ -274,3 +275,8 @@ $ ./get_ftrace
 		- timestamp(handler가 시작되고, 종료되는 시간을 유심히 볼 것)
 	- irq=36
 		- 36번째 인터럽트
+
+### TRACE32
+- 전설적인 디버거라고 함.
+- 유료 프로그램이라 다운받을 수는 없었음.
+- lldb랑 비슷한 명령어가 있지만, 훨씬 더 다양한 기능을 제공하고, 방대한 코드에서 필요한 정보를 쉽게 찾을 수 있어보인다.  
