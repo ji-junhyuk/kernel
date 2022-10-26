@@ -208,3 +208,36 @@ long vhost_dev_set_owner(struct vhost_dev *dev)
 	- 커널 프로세스 자신이 스스로 휴면 상태에 빠지거나 다시 깨어나 실행함
 	- 주로 배경 작업으로 주기적으로 실행됨
 	- 특정 커널 기능(서브 시스템)에서는 기능의 시나리오에 따라 커널 프로세스가 일을 시작(ex: 커널에서 메모리가 부족하면 kwapd 프로세스가 페이지를 확보하는 동작 수행)
+
+###  fork() 함수 유저 프로세스
+- 유저 공간에서 리눅스 시스템 저수준 함수로 fork() 함수를 호출하면 fork 시스템 콜이 발생해 커널 모드로 실행 흐름이 변경
+- 커널 모드에서 시스템 콜 번호에 해당하는 시스템 콜 핸들러인 sys_clone() 함수가 호출
+	- sched_wakeup
+	- sched_switch
+		- raspbian_proc 프로세스가 실행했다가 스케줄링으로 휴먼 상태로 진입
+		- 실행 시간을 보면 3초 간격으로 휴면 상태로 진입했다 실행 반복(sleep(3)을 호출했기 때문)
+- kill 명령어는 프로세스를 종료시키는 시그널을 전달하는 명령어
+	- 프로세스는 자신이 종료할 것이라는 사실을 부모프로세스에게 시그널로 통지
+	- 17은 SIGCHLD
+
+### 프로세스 종료 로그
+- do_exit()
+- do_group_exit
+- _get_signal
+- do_signal
+- do_work_pending
+- slow_work_pending
+
+###  프로세스 생성 단계의 함수 흐름
+- copy_process
+- _do_fork
+- sys_clone
+- ret_fast_syscall
+
+###  프로세스 종료 단계의 함수 흐름
+- do_exit
+- do_group_exit
+- get_signal
+- do_signal
+- do_work_pending
+- slow_work_pending
