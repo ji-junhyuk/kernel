@@ -225,7 +225,7 @@ long vhost_dev_set_owner(struct vhost_dev *dev)
 	- 17은 SIGCHLD
 
 
-### 프로세스 종료 로그
+#### 프로세스 종료 로그
 - do_exit()
 - do_group_exit
 - _get_signal
@@ -233,13 +233,14 @@ long vhost_dev_set_owner(struct vhost_dev *dev)
 - do_work_pending
 - slow_work_pending
 
-###  프로세스 생성 단계의 함수 흐름
+####  프로세스 생성 단계의 함수 흐름
 - copy_process
 - _do_fork
 - sys_clone
 - ret_fast_syscall
+	- 유저 공간에서 fork()함수를 호출하면, system call에 대응대는 handler(sys_clone)가 호출이 된다. ret_fast_syscall 레이블은 handler가 복귀할 곳이다.
 
-###  프로세스 종료 단계의 함수 흐름
+####  프로세스 종료 단계의 함수 흐름
 - do_exit
 - do_group_exit
 - get_signal
@@ -247,4 +248,43 @@ long vhost_dev_set_owner(struct vhost_dev *dev)
 - do_work_pending
 - slow_work_pending
 
+### exit() 함수로 프로세스가 종료: 로그 분석
+- 종료
+	- do_exit
+	- do_group_exit
+	- _wake_up_parent+0x0/0x30 // sys_exit_group()가 호출됌. (wake_up_parent 심볼에 오프셋을 빼면 계산, 실제 코드에서 호출되는 주소보다 오프셋을 출력하는 형식이여서 그렇다.)
+	- ret_fast_syscall
+- rpi_proc_exit
+	- rpi_proc_exit프로세는 종료 과정에서 pid가 2181인 부모 bash 프로세스에게 SIGCHLD 시그널을 전달.
+- signal_deliver : 시그널을 전달받음
+- sig=17:전달 받은 시그널
+- sa_handler=55a6c: 시그너 핸들러 함수 주소(유저 공간)
+ 
+### 정리
+- 프로세스가 스스로 exit POSIX 시스템 콜을 호출하면 스스로 종료될 수 있음
+- exit POSIX 시스템 콜에 대한 시스템 콜 핸들러는 sys_exit_group()함수
+- 프로세스는 소멸되는 과정에서 부모 프로세스에게 SIGCHLD 시그널을 전달해 자신이 종료될 것이라고 통지
 
+## 커널 스레드란
+### 커널 스레드의 정의
+- 커널 프로세스는 커널 공간에서만 실행되는 프로세스
+- 백그라운드 작업으로 실행되면서 시스템 메모리나 전원을 제어하는 동작을 수행
+
+### 커널 스레드의 특징
+- 커널 스레드는 커널 공간에서만 실행되며, 유저 공간과 상호작용 하지 않음
+- 커널 스레드는 실행, 휴먼 등 모든 동작을 커널에서 직접 제어 관리
+- 대부분의 커널 스레드는 시스템이 부팅할 때 생성되고 시스템이 종료할 때까지 백그라운드로 실행
+
+### 커널 스레드의 종류
+- kthreadd 프로세스 (커널 스레드 데몬 프로세스)
+	- kthreadd  프로세스는 모든 커널 스레드의 부모 프로세스
+	- 스레드 핸들러 함수는 kthreadd()이며, 커널 스레드를 생성하는 역할을 수행.
+- 워커 스레드
+	- 워크큐에 큐잉된 워크(work)를 실행하는 프로세스
+	- 스레드 핸들러 함수는 worker_thread()이며, process_one_work() 함수를 호출해 워크를 실행
+- ksoftirqd 프로세스
+	- soft IRQ를 위해 실행되는 프로세스
+	- ksoftirqd 스레드의 핸들러는 run_ksoftirqd() 함수로서 Soft IRQ 서비스를 실행
+	- soft IRQ 서비스를 처리하는 _do_softirq() 함수에서 ksoftirqd를 깨움
+- IRQ 스레드(threaded IRQ)
+	- 인터럽트 후반부 처리를 위해 쓰이는 프로세스
