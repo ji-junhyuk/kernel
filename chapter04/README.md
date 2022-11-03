@@ -288,3 +288,143 @@ long vhost_dev_set_owner(struct vhost_dev *dev)
 	- soft IRQ 서비스를 처리하는 _do_softirq() 함수에서 ksoftirqd를 깨움
 - IRQ 스레드(threaded IRQ)
 	- 인터럽트 후반부 처리를 위해 쓰이는 프로세스
+
+### 커널 스레드는 어떻게 생성될까?
+- 1단계: kthreadd 프로세스에게 커널 스레드 생성을 요청
+	- kthread_create() 함수
+	- kthread_cretae_on_node() 함수
+	- __kthread_create_on_node() 함수
+- 2단계: kthreadd 프로세스가 커널 스레드를 생성
+	- kthreadd() 함수
+	- create_ktrhead() 함수
+
+### kthread_create()
+```c
+#define kthread_create(kthreadfn, data, namefmt, arg...) \
+	kthread_create_on_node(threadfn, data, NUMA_NO_NODE, namefmt, ## arg)
+	
+struct task_struct *kthread_create_on_node(int (*threadfn)(void *data), void *data, int node, const char namefmt[], ...)
+```
+- 함수인자
+	- int (*threadfn)(void *data): 스레드 핸들러 함수 주소를 저장하는 필드
+	- void *data: 스레드 핸들러 함수로 전달하는 매개변수
+	- int node: 노드 정보
+	- const char namefmt[]: 커널 스레드 이름을 저장
+- 코드 분석
+	 - 커널 컴파일 과정에서 전처리기는 kthread_create() 함수를 ktrhead_create_on_node() 함수로 교체
+	 - 커널이나 드라이버 코드에서 kthread_Create_on_node() 함수를 호출하면 실제로 동작하는 코드는 kthread_create_on_node() 함수
+	 - kthread_create_on_node() 함수 내부에서 __kthread_create_on_node() 함수 호출
+- kthread_create_on_node()
+```c
+struct task_struct *kthread_create_on_node(int (*threadfn)(void *data), void *data, int node, const char namefmt[], ...)
+{
+ 	struct task_struct *task;
+	va_list args;
+	
+	va_start(args, namefmt);
+	task = __kthread_create_on_node(threadfn, data, node, namefmt, args);
+	va_end(args);
+	
+	return task;
+}
+```
+- __kthread_cretae_on_node()
+```c
+struct task_struct *__kthread_create_on_node(int (*threadfn)(void *data), void *data, int node, const char namefmt[], va_list args)
+{
+	DECLARE_COMPLITION_ONSTACK(done);
+	struct task_struct *task;
+	sturct kthread_create_info *create = kmalloc(sizeof(*create), GFP_KERNEL);
+	
+	if (!create)
+	return ERR_PTR(-ENOMEM);
+	create->threadfn = threadfn;
+	create->data = data;
+	create->node = node;
+	create->done = &done;
+	
+	spin_lock(&kthread_create_lock);
+	list_add_tail(&create->list, &kthread_create_list);
+	spin_unlock(&kthread_create_lock);
+	
+	wake_up_process(kthreadd_task);
+}
+
+- 커널 스레드 생성하는 예제 코드
+```c
+long vhost_dev_set_owner(struct vhost_dev *dev)
+{
+	struct task struct *worker;
+	int err;
+	
+	dev->mm - get_task_mm(current);
+	worker - kthread_create(vhost_worker, dev, "vhost-%d", current->pid);
+}
+```
+- kthread_create() 함수의 첫 번째 인자로 vhost_worker로 스레드 핸들러 함수의 이름을 지정
+- vhost_dev 구조체의 주소를 2번째 인자로 전달
+- 3번째 인자로 "vhost-%d"를 전달하며 커널 스레드의 이름을 나타냄.
+
+### 커널 스레드 생성:2단계
+- 1단계에서 커널 스레드를 생성해 달라고 kthreadd 프로세스에게 요청한 후 kthreadd 프로세스를 깨움
+- kthreadd 프로세스를 깨우면 kthreadd 프로세스의 스레드 핸들러인 kthreadd()함수가 호출되어 요청한 프로세스를 생
+
+### kthreadd()함수의 핵심 기능
+- kthread_create_info 연결 리스트를 확인해 프로세스 생성 요청을 확인
+- create_kthread() 함수를 호출해 프로세스를 생성
+- (커널 스레드 핸들러 함수, 커널 스레드 데몬 프로세스의 실제 세부 동작 구현)
+```c
+for (;;) {
+	set_current_sate(TASK_INTERRUPTIBLE);
+	if (list_empty(&kthreadd_create_list))
+		schedule(); /* schedule() 함수를 호출해 스스로 휴면 상태로 진입 */
+	__set_current_state(TASK_RUNNING);
+	
+	spin_lock(&kthread_create_lock);
+	/* kthread_create_list 연결 리스트가 비어있지 않으면 21~32번째 줄을 실행해 커널 스레드를 생성 */
+	while (!list_empty(&kthreadd_create_list)) {
+		sturct kthread_create_info *create;
+	/* kthread_create_list.next 필트를 통해 kthread_create_info 구조체의 주소를 읽음 */
+	create = list_entry(kthreadd_create_list.next, struct kthread_create_info, list);
+	list_del_init(*create->list);
+	spin_unlock(&kthread_create_lock);
+	/* create_kthread() 함수를 호출해서 커널 스레드를 생성 */
+	create_kthread(create);
+	}
+	spin_unlock(&kthread_create_lock);
+}
+```
+
+### kthreadd() 함수에서 커널 스레드를 생성할 때 자료구조
+- kthread_create_list 연결 리스트와 kthread_create_info 구조체의 관계
+	- kthread_create_list 전역변수의 next 필드가 kthread_create_info 구조체의 list 필드 주소를 가리킴
+	- kthread_create_list라는 전역 변수의 next 필드는 화살표로 kthread_create_info 구조체의 list 필드가 위치한 주소를 가리킴
+
+### create_kthread()
+```c
+static void create_kthread(struct kthread_create_info *create)
+{
+	int pid;
+	
+#ifndef CONFIC_NUMA
+	current->pref_node_fork = create->node;
+#endif
+	pid = kernel_thread(kthread, create, CLONE_FS | CLONE_FILES | STGCHLD);
+}
+```
+
+### kernel_thread()
+```c
+pid_t kernel_thread(int (*fn)(void *), void *arg, unsigned long flags)
+{
+	return _do_fork(flags|CLONE_VM | CLONE_UNTRACED, (unsigned long)fn, (unsigned long)arg, NULL, NULL, 0);
+}
+```
+
+### 커널 스레드를 생성하는 과정 정리
+- Q. 커널 스레드를 생성하려면 어떤 함수를 호출해야 할까?
+	- A: ktrhead_create() 함수를 호출해야 하며 함수의 인자로 '스레드 핸들러 함수', '매개변수', '커널 스레드 이름'을 지정
+- Q. 커널 스레드를 생성하는 단계는 무엇일까?
+	- A: kthreadd 프로세스에게 커널 스레드 생성을 요청한 후 kthreadd 프로세스를 깨움. kthreadd 프로세스는 깨어나 자신에게 커널 스레드 생성 요청이 있었는지 확인한 후 만약 생성 요청이 있다면 커널 스레드를 생성.
+
+
