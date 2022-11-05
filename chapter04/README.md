@@ -427,4 +427,105 @@ pid_t kernel_thread(int (*fn)(void *), void *arg, unsigned long flags)
 - Q. 커널 스레드를 생성하는 단계는 무엇일까?
 	- A: kthreadd 프로세스에게 커널 스레드 생성을 요청한 후 kthreadd 프로세스를 깨움. kthreadd 프로세스는 깨어나 자신에게 커널 스레드 생성 요청이 있었는지 확인한 후 만약 생성 요청이 있다면 커널 스레드를 생성.
 
+### 커널 내부에서 프로세스를 생성하는 흐름
+- kthreadd() 함수를 호출해 커널 프로세스 생성을 전담하는 kthreadd 스레드에게 프로세스 생성을 요청
+- kthreadd_create() 함수에서 _do_fork() 함수를 호출
+- 유저 프로세스와 커널 프로ㅔ스를 생성할 때 공통으로 _do_fork() 함수를 호출
+
+### _do_fork() 함수 실행 흐름
+- 1단계
+	 - copy_process() 함수를 호출해서 프로세스를 생성
+	 - copy_process() 함수는 부모 프로세스의 리소스를 자식 프로세스에게 복제
+- 2단계
+	- wake_up_new_task()함수를 호출해서 프로세스를 깨움
+	- 프로세스를 깨운다는 의미는 스케줄러에게 프로세스의 실행 요청을 하는 것
+```c
+...
+/* 부모 프로세스의 메모리 및 시스템 정보를 자식 프로세스에게 복사*/
+p = copy_process(clone_flags, stack_start, stack_size,
+			 child_tidptr, NULL, trace, tls, NUMA_NO_NODE);
+	add_latent_entropy();
+
+	if (IS_ERR(p))
+		return PTR_ERR(p);
+	/* sched_process_fork 이벤트에 대한 메시지 출력: 생성되는 프로세스의 정보 */
+	trace_sched_process_fork(current, p);
+	
+	pid = get_task_pid(p, PIDTYPE_PID);
+	nr = pid_vnr(pid);
+	
+	wake_up_new_task(p); /* 생성한 프로세스를 깨움 */
+	put_pid(pid);
+	return nr; /* 프로세스의 PID를 담고 있는 정수형 타입의 nr 지역변수를 반환 */
+```
+### copy_process 코드
+```c
+int retval;
+struct task_struct *p;
+
+/* 생성할 프로세스의 테스크 디스크립터인 task_struct 구조체와 프로세스가 실행될 스택 공간을 할당. dup_task_struct() 함수를 호출해 테스크 디스크립터를 p에 저장 */
+retval = -ENOMEM;
+p = dup_task_struct(current, node);
+	if (!p)
+		goto fork_out;
+
+/* 테스크 디스크립터를 나타내는 task_struct 구조체에서 스케줄링 관련 정보를 초기화 */
+retval = sched_fork(clone_flags, p);
+	if (retval)
+		goto bad_fork_cleanup_policy;
+
+/* 프로세스의 파일 디스크립터 관련 내용(파일 디스크립터, 파일 디스크립터 테이블)을 초기화 */
+retval = copy_files(clone_flags, p);
+	if (retval)
+		goto bad_fork_cleanup_semundo;
+	retval = copy_fs(clone_flags, p);
+
+/* 프로세스가 등록한 시그널 핸들러 정보인 sighand_struct 구조체를 생성해서 복사*/
+retval = copy_sighand(clone_flags, p);
+	if (retval)
+		goto bad_fork_cleanup_fs;
+```
+### wake_up_new_task()
+- 주요 동작
+	- 프로세스의 상태를 TASK_RUNNING으로 변경
+	- 현재 실행 중인 CPU 번호를 thread_info 구조체의 cpu 필드에 저장
+	- 런큐에 프로세스를 큐잉
+
+```c
+struct rq_flags rf;
+struct rq *rq;
+	
+raw_spin_lock_irqsave(&p->pi_lock, rf.flags);
+/* 프로세스의 상태를 TASK_RUNNING으로 바꿈 */
+p->state = TASK_RUNNING;
+
+#ifdef CONFIG_SMP
+/* 프로세스와 thread_info 구조체의 cpu 필드에 현재 실행 중인 CPU 번호를 저장 */
+	p->recent_used_cpu = task_cpu(p);
+	__set_task_cpu(p, select_task_rq(p, task_cpu(p), SD_BALANCE_FORK, 0));
+#endif
+/* 런큐 주소를 읽음 */
+	rq = __task_rq_lock(p, &rf);
+	update_rq_clock(rq);
+	post_init_entity_util_avg(&p->se);
+
+/* activate_task() 함수를 호출해 런큐에 새롭게 생성한 프로세스를 삽입 */
+	activate_task(rq, p, ENQUEUE_NOCLOCK);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
