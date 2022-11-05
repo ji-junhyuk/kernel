@@ -511,6 +511,131 @@ p->state = TASK_RUNNING;
 
 /* activate_task() 함수를 호출해 런큐에 새롭게 생성한 프로세스를 삽입 */
 	activate_task(rq, p, ENQUEUE_NOCLOCK);
+```
+
+### 프로세스의 종료 흐름 파악
+- 보통 유저 프로세스가 정해진 시나리오에 따라 종료해야 할 때 exit() 함수를 호출
+	- exit() 시스템 콜
+		- sys_exit_group
+		- do_group_exit
+		- do_exit
+	- kill 시그널을 받아 프로세스가 소멸
+		- slow_work_pending
+		- do_work_pending
+		- do_signal
+		- do_group_exit
+		- do_exit
+
+### do_exit()
+```c
+void __noreturn do_exit(long code);
+```
+- code 인자: 프로세스 종료 코드
+- 선언 키워드: _noreturn 키워드 지시자로 실행 후 자신을 호출한 함수로 되돌아가지 않음
+
+- 주요 특징
+	- do_exit() 함수에서 do_task_dead() 함수를 호출해서 schedule() 함수를 실행함으로써 함수 흐름을 마무리
+	- 프로세스는 자신의 프로세스 스택 메모리 공간을 해제할 수 없음
+	- schedule() 함수를 호출해 스케줄링한 후 '다음에 실행되는 프로세스'가 종료되는 프로세스의 스택 메모리 공간을 해제
+
+### do_exit() 실행 단계
+1. init 프로세스가 종료하면 강제 커널 패닉 유발: 보통 부팅 과정에서 발생
+2. 이미 프로세스가 do_exit() 함수의 실행으로 프로세스가 종료되는 도중 다시 do_exit() 함수가 호출됐는지 점검
+3. 프로세스 리소스(파일 디스크립터, 가상 메모리, 시그널) 등을 해제
+4. 부모 프로세스에게 자신이 종료되고 있다고 알림
+5. 프로세스의 실행 상태를 task_struct 구조체의 state 필드에 TASK_DEAD로 설정
+6. do_task_dead() 함수를 호출해 스케줄링을 실행
+```c
+struct task_struct *tsk = current;
+int group_dead;
+
+/* task_struct 구조체의 flags에 PF_EXITING 플래그가 설정됐을 때 아래 실행. 프로세스가 do_Exit() 함수를 실행하는 도중에 do_exit() 함수가 호출됐을 때 예외를 처리하는 코드 */
+if (unlikely(tsk->flags & PF_EXITING)) {
+	pr_alert("Fixing recursive fault but reboot is needed!\n");
+	tsk->flags |= PF_EXITPIDONE;
+	set_current_state(TASK_UNINTERRUPTIBLE);
+	schedule();
+}
+
+/* 프로세스의 task_sturct 구조체의 flags 필드를 PF_EXITING으로 바꿈 */
+exit_signals(tsk); 
+
+/* 프로세스의 메모리 디스크립터인 mm_sturct 구조체의 리소스를 해제하고 메모리 디스크립터 사용 카운트를 1만큼 감소시킴 */
+exit_mm();
+
+/* 프로세스가 사용하고 있는 파일 디스크립터 정보를 해제 */
+exit_files(tsk);
+exit_fs(tsk);
+
+/* 부모 프로세스에게 현재 프로세스가 ㄷ종료 중이라는 사실을 통지 */
+exit_notify(tsk, group_dead);
+
+do_task_dead();
+```
+
+### do_task_dead()
+- do_task_dead() 함수 실행 후 호출되는 함수 목록
+	- __schedule() 함수
+	- context_switch() 함수
+	- finish_task_switch() 함수
+
+- 위 함수들이 실행되면서 다음과 같은 과정으로 프로세스가 소멸
+	- 종료할 프로세스는 do_exit() 함수에서 대부분 자신의 리소스를 커널에게 반납하고 자신의 상태를 TASK_DEAD로 바꿈
+	- 컨텍스트 스위칭 수행
+	- 컨텍스트 스위칭으로 다음에 실행하는 프로세스는 finish_task_switch() 함수에서 이전에 실행했던 프로세스 상태(종료할 프로세스)가 TASK_DEAD이면 프로세스 스택 공간을 해제
+
+### __schdule()
+```c
+if (likely(prev != next)) {
+/* context_switch()통해 컨텍스트 스위치 */
+	rq = context_switch(rq, prev, next, &rf);
+} else {
+	rq->clock_update_flags &= ~(RQCF_ACT_SKIP|RQCF_REQ_SKIP);
+	rq_unlock_irq(rq, &rf);
+}
+```
+
+### context_switch()
+```c
+switch_to(prev, next, prev); // assembly로 구현
+barrier();
+
+return finish_task_switch(prev);
+```
+
+### finish_task_switch()
+```c
+/* 이전에 실행했던 프로세스 상태가 TASK_DEAD일 때 아래를 실행하는 조건문 */
+if (unlikely(prev_state == TASK_DEAD)) {
+		if (prev->sched_class->task_dead)
+			prev->sched_class->task_dead(prev);
+
+		kprobe_flush_task(prev);
+		
+/* put_task_stack() 함수를 호출해서 프로세스의 스택 메모리 공간을 해제하고 커널 메모리 공간에 반환 */
+		put_task_stack(prev);
+/* put_task_struct() 함수를 실행해 프로세스를 표현하는 자료구조인 task_struct가 위치한 메모리를 해제 */
+		put_task_struct(prev);
+	}
+```
+
+### 정리
+- 프로세스가 종료할 때는 do_exit함수 호출
+- do_exit에선 주요 리소스 해제
+- 프로세스가 자신의 리소스를 해제한 다음 do_task_dead() 호출해서 프로세스의 태스크 디크립터와 스택 공간을 다음에 실행될 프로세스에 의해서 해제한다. 
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
