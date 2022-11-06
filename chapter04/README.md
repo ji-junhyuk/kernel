@@ -624,7 +624,48 @@ if (unlikely(prev_state == TASK_DEAD)) {
 - do_exit에선 주요 리소스 해제
 - 프로세스가 자신의 리소스를 해제한 다음 do_task_dead() 호출해서 프로세스의 태스크 디크립터와 스택 공간을 다음에 실행될 프로세스에 의해서 해제한다. 
 
-
+### 태스크 디스크립터
+- 프로세스의 속성 정보를 표현하는 가장 중요한 자료구조
+- 프로세스의 이름과 PID와 같은 프로세스 정보 저장
+- 프로세스의 관계를 알 수 있는 데이터 저장
+- 프로세스가 생성되면 커널이 태스크 디스크립터를 프로세스에 부여
+```c
+task_struct 구조체 필드가 어떤 함수에서 변경되었는지 아는 것이 중요!
+```
+### 프로세스를 식별하는 필드
+- char comm[TASK_COMM_LEN];
+	- comm은 TASK_COMM_LEN 크기의 배열이며 프로세스 이름을 저장
+- pid_t pid;
+	- pid는 process ID의 약자로 프로세스마다 부여하는 정수형 값
+- pid_t tgid;
+	- pid와 같은 타입의 필드로 스레드 그룹 아이디를 표현하는 정수형 값
+- volatile long state
+	- 프로세스의 상태를 저장하며 다음 매크로 중 하나를 저장
+```c
+#define TASK_RUNNING		0x0000
+#define TASK_INTERRUPTIBLE	0x0001
+#define TASK_UNITERRUPTIBLE	0x0002
+```
+- unsigned int flags;
+	- 프로세스의 종류와 프로세스 세부 실행 상태를 저장하는 필드
+	- flags 필드는 PF_*로 시작하는 매크로 필드를 OR 연산한 결과 저장
+```c
+#define PF_IDLE				0x000000002
+#define PF_EXITING			0x000000004
+#define PF_EXITPIDONE		0x000000008
+#define PF_WQ_WORKER		0x000000020
+#define PF_KTHREAD			0x002000000
+```
+- int exit_code;
+	- 프로세스의 종료 코드를 저장하는 코드
+	- do_exit() 함수의 3번째 줄에서 종료 코드를 저장
+```c
+void __noreturn do_Exit(long code)
+{
+...
+	tsk->exit_code = code;
+}
+```
 
 
 
