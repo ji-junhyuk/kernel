@@ -710,30 +710,39 @@ static __latent_entropy struct task_struct *copy_process(
 ```
 <사진2>
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+### 프로세스 실행 시각 정보
+- u64 utime
+	- 유저모드에서 프로세스가 실행한 시각
+	- 이 필드는 account_user_time() 함수의 6번째 줄에서 변경
+```c
+void account_user_time(sturct task_struct *p, u64 cputime)
+{
+	int index;
+	
+	p->utime += cputime;
+}
+```
+- u64 stime
+	- 커널모드에서 프로세스가 실행한 시각을 저장
+	- 이 필드는 account_system_index_time() 함수에서 변경
+```c
+void account_system_index_time(struct task_sturct *p, u64 cputime, enum cpu_usage_stat index)
+{
+	p->stime += cputime;
+}
+```
+- sched_info.last_arrival 필드
+	- 프로세스가 마지막에 CPU에서 실행된 시간 저장
+	- 이 필드는 sched_info_arrive() 함수에서 변경
+```c
+static void sched_info_arrive(struct rq *rq, struct task_struct *t)
+{
+	unsigned long long now = rq_clock(rq), delta = 0;
+	
+	if (sched_info.last_queued)
+		delta = new - t->sched_info.last_queued;
+	sched_info_reset_dequeued(t);
+	t->sched_info.run_delay += delta;
+	t->sched_info.last_arrival = now;
+}
+```
