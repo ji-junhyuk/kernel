@@ -667,6 +667,48 @@ void __noreturn do_Exit(long code)
 }
 ```
 
+### 태스크 디스크립터: 프로세스 간 관계
+- sturct task_struct *real_parent;
+	- 자신을 생성한 부모 프로세스의 태스크 디스크립터 주소를 저장
+- struct task_struct *parent;
+	- 부모 프로세스의 태스크 디스크립터 주소를 저장
+- 흐름
+	- sys_exit_group
+	- do_group_exit
+	- do_exit
+	- exit_notify
+	- forget_original_parent
+	- find_new_reaper
+- forget_original_parent() 함수와 find_new_reaper() 함수에서 새로운 부모 프로세스 지정
+- sturct list_head children
+	- 부모 프로세스가 자식 프로세스를 생성할 때 children 연결 리스트에 자식 프로세스를 등록
+- sturct list_head sibling
+	- 같은 부모 프로세스로 생성된 프로세스의 연결리스트 주소를 저장하며 형제 관계의 프로세스들이 등록된 연결리스
+<사진1>
+- "kthreadd" 프로세스 태스크 디스크립터의 children 필드는 연결리스트이며 연결리스트 헤드에 등록된 자식 프로세스의 task_struct 구조체의 sibling 필드 주소를 저장
+- "kthreadd" 프로세스의 자식 프로세스인 "kworker/0:0H" 입장에서 ""mm_percpu_wq"와 "ksoftirqd/0" 프로세스는 자신의 sibling 연결 리스트로 이어져 있음.
+- struct list_head tasks;
+	- 커널에서 구동 중인 모든 프로세스는 tasks 연결 리스트에 등록됨
+	- 프로세스는 처음 생성될 때 init_task 전역변수 필드인 tasks 연결 리스트에 등록
+```c
+static __latent_entropy struct task_struct *copy_process(
+					unsigned long clone_flags,
+					unsigned long stack_start,
+					unsigned long stack_size,
+					int __user *child_tidptr,
+					struct pid *pid,
+					int trace,
+					unsigned long tls,
+					int node)
+{
+	struct task_struct *p;
+	p = dup_task_struct(current, node);
+
+	/* init_task.tasks 연결 리스트의 마지막 노트에 현재 프로세스의 task_struct 구조체의 tasks 주소를 등록 */
+	list_add_tail_rcu(&p->tasks, &init_task.task);
+}
+```
+<사진2>
 
 
 
