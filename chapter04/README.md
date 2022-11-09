@@ -746,3 +746,43 @@ static void sched_info_arrive(struct rq *rq, struct task_struct *t)
 	t->sched_info.last_arrival = now;
 }
 ```
+
+### thread_info
+- thread_info 구조체란
+	- thread_info 구조체는 다음과 같은 프로세스의 핷미 실행 정보 저장
+		- 선점 스케줄링 실행 여부
+		- 시그널 전달 여부
+		- 인터럽트 컨텍스트와 Soft IRQ 컨텍스트 상태
+		- 휴먼 상태로 진입하기 직전 레지스터 세트를 로딩 및 백업
+cf. CPU 아키텍처마다 조금씩 다르다 (ARM PROCESSOR 관점)
+	- thread_info 구조체는 어디에 있을까?
+		- 프로세스 스택의 최상단 주소에 위치
+		- 프로세스마다 자신만의 스택이 있으니 프로세스마다 1개의 thread_info 구조체가 있음
+- thread_info 구조체는 CPU아키텍처마다 다름
+	- x86
+```c
+struct thread_info (
+	unsigned long	flags;
+	u32				status;
+);
+```
+	- ARMv7 아키텍처의 thread_info 구조체 선언부
+```c
+struct thread_info {
+	unsigned long flags;
+	int				preempt_count;
+	mm_segment_t	addr_limit;
+	struct task struct *task;
+	__u32				cpu;
+}
+```
+- 태스크 디스크립터인 task_struct 구조체와 thread_info 구조체 차이점
+	- 태스크 디스크립터인 task_struct 구조체는 CPU 아키텍처에 독립적인 프로세스 관리용 속성을 저장
+	- 커널 버전이 같으면 x86이나 ARMv7 아키텍처에서 task_struct 구조체의 기본 필드는 같음
+	- thread_info 구조체는 CPU 아키텍처에 종속적인 프로세스의 세부 속성을 저장하므로 서로 다름
+- thread_info 구조체에서 관리하는 커널의 세부 동작
+	- 현재 실행 중인 코드가 인터럽트 컨텍스트인지 여부
+	- 현재 프로세스가 선점 가능한 조건인지 점검
+	- 프로세스가 시그널을 받았는지 여부
+	- 컨텍스트 스케줄링 전후로 실행했던 레지스터 세트를 저장하거나 로딩
+(프로세스의 구체적인 실행정보: thread_info)
