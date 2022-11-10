@@ -786,3 +786,58 @@ struct thread_info {
 	- 프로세스가 시그널을 받았는지 여부
 	- 컨텍스트 스케줄링 전후로 실행했던 레지스터 세트를 저장하거나 로딩
 (프로세스의 구체적인 실행정보: thread_info)
+
+### thread_info 구조체 분석
+```c
+struct thread_info {
+	unsigned long		flags;		/* low level flags */
+	int			preempt_count;	/* 0 => preemptable, <0 => bug */
+	mm_segment_t		addr_limit;	/* address limit */
+	struct task_struct	*task;		/* main task structure */
+	__u32			cpu;		/* cpu */
+	__u32			cpu_domain;	/* cpu domain */
+	struct cpu_context_save	cpu_context;	/* cpu context */
+	__u32			syscall;	/* syscall number */
+	__u8			used_cp[16];	/* thread used copro */
+	unsigned long		tp_value[2];	/* TLS registers */
+	union fp_state		fpstate __attribute__((aligned(8)));
+	union vfp_state		vfpstate;
+};
+```
+- unsigned long flags
+	- 프로세스의 동작을 관리하는 필드이며 다음 플래그를 저장
+		- sigPENDING : 프로세스에게 시그널이 전달 되었는지 여부
+		- WEED_RESCHED : 현재 프로세스가 선점 될 수 있는지 여부
+		- SYSCALL_TRACE : 디버깅이 켜져 있는지 여부
+- int preempt_count
+	- 프로세스와 컨텍스트(인터럽트 컨텍스트, Soft IRQ 컨텍스트) 실행 정보와 프로세스가 선점 스케줄링될 조건을 저장.
+	- thread_info 구조체에서 가장 중요한 필드
+- _u32 cpu
+	- 프로세스가 실행 중인 CPU 번호를 저장
+- struct task_struct *task
+	- 실행 중인 프로세스의 태스크 디스크립터의 주소를 저장
+- struct cpu_context_save_cpu_context;
+	- 프로세스가 실행된 레지스터 세트 정보를 저장
+	- cpu_context_save 구조체의 선언부
+```c
+struct cpu_context_save {
+	__u32	r4;
+	__u32	r5;
+	__u32	r6;
+	__u32	r7;
+	__u32	r8;
+	__u32	r9;
+	__u32	sl;
+	__u32	fp;
+	__u32	sp;
+	__u32	pc;
+	__u32	extra[2];		/* Xscale 'acc' register, etc */
+};
+```
+- thread_info 구조체 필드 디버깅
+
+
+
+
+
+
