@@ -836,8 +836,33 @@ struct cpu_context_save {
 ```
 - thread_info 구조체 필드 디버깅
 
-
-
-
-
-
+### thread_info 구조체 주소 위치
+```c
+(struct thread_info *)0x89C00000
+(long unsigned int) flags
+(int) preempt_count
+(mm_segment_t) addr_limit
+(__u32) cpu
+(__u32) cpu_domain
+(struct cpu_context_save) cpu_context
+(__u32) syscall
+(__u8 [16]) used_cp
+(long unsigned int [2]) tp_value
+(union fp_state) fpstate
+(union vfp_state) vfpstate
+...
+__wake_up_common lock
+pipe_write
+__vfs_write
+vfs_write
+ksys_write
+sys_write
+ref_fast_syscall
+- 스택의 최하단 주소
+/*
+	드라이버 코드를 재귀적으로 작성 시 콜 스택이 쌓이면서 자신의 thread_info 상단에 있는 구조체 필드가 오염될 수 있음.
+*/
+```
+- thread_info 구조체는 프로세스의 세부 실행 속성 정보를 담고 있으며 프로세스마다 1개씩 존재
+- 프로세스 스택의 최상단 주소는 0x80C00000이고, 스택의 최하단 주소는 0X80C02000
+- thread_info 구조체의 주소는 그림과 같이 프로세스 스택의 최상단 주소인 0x80C00000`
