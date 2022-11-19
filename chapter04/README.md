@@ -866,3 +866,76 @@ ref_fast_syscall
 - thread_info 구조체는 프로세스의 세부 실행 속성 정보를 담고 있으며 프로세스마다 1개씩 존재
 - 프로세스 스택의 최상단 주소는 0x80C00000이고, 스택의 최하단 주소는 0X80C02000
 - thread_info 구조체의 주소는 그림과 같이 프로세스 스택의 최상단 주소인 0x80C00000`
+
+### 인터럽트 컨텍스트 실행 상태 저장
+- __wake_up_common_lock() 함수를 실행하는 도중에 인터럽트 발생
+- 인터럽트 익셉션 핸들러인 __irq_svc 레이블 실행
+- 다음과 같은 인터럽트 제어 함수 호출
+	- bcm2836_arm_irqchip_handle_irq()
+	- _handle_domain_irq()
+- __handle_domain_irq()함수에서 irq_enter() 매크로 함수를 호출
+	- 프로세스 스택 최상단 주소에 접근한 후 thread_info 구조체의 preempt_count 필드에 HARDIRQ OFFSET(0x10000) 비트를 더함.
+- 화살표 방향으로 함수를 호출해서 인터럽트 핸들러 함수인 usb_hcd_irq() 함수를 호출
+	- 서브루틴 함수를 실행
+
+- 인터럽트 컨텍스트를 활성화하는 함수 분석
+	- __irq_enter() 함수
+```c
+#define __irq_enter()
+	do {
+		account_irq_enter_time(current);
+		preempt_count_add(HARDIRQ_OFFSET);
+		trace_hardirq_enter();
+	} while (0)
+```
+- thread_info 구조체의 preempt_count 필드에 HARDIRQ_OFFSET(0x10000)를 더함.
+- prrempt_count_add()매크로 함수는 프로세스 스택의 최상단 주소에 접근해서 preempt_count 필드에 val를 더함.
+
+### 인터럽트 컨텍스트 종료 상태 저장
+- 인터럽트 컨테긋트의 종료 상태를 저장하는 과정
+	- 인터럽트 서비스 루틴을 종료한 다음 irq_exit() 함수 호출
+	- irq_exit 함수는 preempt_count 필드에 HARDIRQ_OFFSET(0x10000)를 빼는 연산 수행
+```c
+void irq_exit(void)
+{
+	account_irq_exit_time(current);
+	preempt_count_sub(HARDIRQ_OFFSET);
+}
+```
+- irq_exit() 함수를 호출한 이후 in_interrupt()함수를 호출하면 다음 연산에 의해false 반환
+```c
+false = 0x0000 & 0x001FFF00 (HARDIRQ_MASK | SOFTIRQ_MASK | NMI_MASK)
+```
+
+### Soft IRQ 컨텍스트 실행 상태 저장
+- Soft IRQ는 다양한 서비스, 요청을 하면 요청이 되어 있는지 체크하고 서비스를 실행.
+
+### Soft IRQ 컨텍스트를 설정하는 단계
+- 인터럽트 핸들링이 끝나면 irq_exit() 함수가 호출
+- irq_exit 함수에서 Soft IRQ 서비스 요청 여부 체크
+- Soft IRQ 서비스가 요청됐으면 __do_softirq() 함수 호출
+- Soft IRQ 서비스를 실행하는 _do_softirq() 함수에서 프로세스 스택의 최상단 주소에 접근
+- thread_info 구조체의 preempt_count 필드에 Soft IRQ 실행을 나타내는 SOFTIRQ_OFFSET(0x100) 매크로를 더함
+```c
+void __local_bh_disable_ip(unsigned long ip, unsigned int cnt)
+{
+	__preempt_count_add(cnt);
+}
+```
+- preempt_count_add() 함수는 전달된 인자를 thread_info 구조체의 preempt_count 필드에 더함.
+- cnt는 SOFTIRQ_OFFSET 매크로를 저장하고 있으니 thread_info 구조체의 preempt_count는 다음 수식으로 바뀜.
+	- preempt_count += SOFT_OFFSET;
+
+### Soft IRQ 컨텍스트 해제 상태 저장 
+- __local_bh_enable() 함수 분석
+```c
+static void __local_bh_enable(unsigned int cnt)
+{
+	__preempt_count_sub(cnt);
+}
+```
+- __do_softirq() 함수에서 Soft IRQ 서비스 핸들러 함수를 호출한 후 __local_bh_enable() 함수를 호출
+- 프로세스 스택의 최상단 주소에 접근해 thread_info 구조체의 preempt_count 필드에서 SOFTIRQ_OFFSET(0x100) 비트를 빼는 연산 수행
+- 이후 in_softirq() 함수를 호출하면 false를 반환
+	- 0x000 & 0xFF00 (SOFTIRQ_MASK) // 결과 false
+```
