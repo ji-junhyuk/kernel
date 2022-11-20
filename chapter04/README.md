@@ -938,4 +938,50 @@ static void __local_bh_enable(unsigned int cnt)
 - 프로세스 스택의 최상단 주소에 접근해 thread_info 구조체의 preempt_count 필드에서 SOFTIRQ_OFFSET(0x100) 비트를 빼는 연산 수행
 - 이후 in_softirq() 함수를 호출하면 false를 반환
 	- 0x000 & 0xFF00 (SOFTIRQ_MASK) // 결과 false
+
+### 선점 스케줄링 조건 체크
+- 선점 스케줄링 관점으로 thread_info 구조체의 preempt_count필드
+	- thread_info 구조체의 preempt_count 필드는 선점 스케줄링의 핵심 자료 구조 (주기적으로 선점 할지 안할지 체크한다)
+	- 스케줄링 동작 중에 thread_info 구조체의 preempt_count 필드에 저장된 값을 보고 선점 스케줄링 실행 여부를 판단
+	- preempt_count 필드가 0이고 flags 필드와 _TIF_NEED_RESCHED(0x2)와의 AND비트 연산을 수행해 연산 결과가 true이면 선점 스케줄링 실행
+
+### 선점 스케줄링 관점으로 __irq_svc 레이블 코드 분석
+```c
+__irq _svc:
+	svc_entry
+	irq_handler
+	
+#ifdef CONFIG_PREEMPT
+	ldr r8, [tsk, $T1_PREEMPT]
+	ldr r0, [tsk, #T1_FLAGS]
+	teq r8, #0
+	movne 	r0, #0
+	tst r0, #_TIF_NEED_RESCHED
+	blne svc_preempt
+#endif
 ```
+ 
+- preempt_count 필드가 0인지 여부
+- flags 필드와_TIF_NEED_RESCHED(0x2)와의 AND비트 연산을 수행해 연산 결과가 true인지 여부
+- 두 조건을 모두 만족하면 11번째 줄과 같이 svbc_preempt 레이블을 호출해 선점 스케줄링을 실행
+```c
+struct thread_info *current_thread_info = task_thread_info(current);
+
+if (current_thread_info.prrempt_count == 0)
+{
+	if (current_thread_info.flags & _TIF_NEED_RESCHED) 
+		svc_preempt();
+}
+else
+	current_thread_info.flags = 0;
+```	
+
+### thread_info 구조체의 preempt_count 필드 설정 정리
+- 인터럽트 컨텍스트 설정
+	- 시작: preempt_count += HARDIRQ_OFFSET;
+	- 종료: preempt_count -= HARDIRQ_OFFSET;
+- Soft IRQ 컨텍스트 설정
+	- 시작: preempt_count += SOFTIRQ_OFFSET;
+	- 종료: preempt_count -= SOFTIRQ_OFFSET;
+- 프로세스 스케줄링 가능 여부
+	- preempt_count가 0이고 flags 필드가 _TIF_NEED_RESCHED(0x2)를 포함하면 선점 스케줄링 되는 조건임.
