@@ -985,3 +985,64 @@ else
 	- 종료: preempt_count -= SOFTIRQ_OFFSET;
 - 프로세스 스케줄링 가능 여부
 	- preempt_count가 0이고 flags 필드가 _TIF_NEED_RESCHED(0x2)를 포함하면 선점 스케줄링 되는 조건임.
+
+### thread_info 구조체: cpu 필드
+- thread_info 구조체의 cpu 필드
+	- 프로세스가 실행 중인 CPU 번호를 저장
+	- 커널에서 제공하는 smp_processor_id()함수를 호출
+- thread_info 구조체의 cpu 필드 관련 코드 분석
+	- smp_processor_id() 함수 분석
+```c
+# define smp_processor_id() raw_smp_processor_id()
+```
+	- raw_smp_processor_id()
+```c
+#define raw_smp_processor_id() (current_thread_info()->cpu)
+```
+	- current_thread_info() 함수
+		- 실행 중인 프로세스 스택의 주소를 읽어서 프로세스 스택의 최상단 주소에 접근해 thread_info 구조체의 시작 주소를 반환
+- 현재 실행 중인 코드가 어떤 CPU에서 실행 중인지 식별
+```c
+void resched_curr(struct rq *rq)
+{
+	struct task_struct *curr = rq->curr;
+	int cpu;
+	
+	cpu = cpu_of(rq);
+	
+/*
+	현재 실행 중인 cpu 번호와 런큐 cpu 번호가 같으면 실행하고 함수 실행을 종료
+*/
+	if (cpu == smp_processor_id()) 
+	{
+		set_tsk_need_resched(curr);
+		set_preempt_need_resched();
+		return ;
+	}
+}
+```
+- smp_processor_id() 함수의 전체흐름
+	- 프로세스 스택의 최상단 주소에 접근
+	- thread_info 구조체의 cpu 필드를 반환
+- thread_info 구조체의 cpu 필드를 설정하는 함수 분석
+	- set_task_cpu() 함수 분석
+```c
+void set_task_cpu(struct task_struct *p, unsigned int new_cpu)
+{
+	/* 두 번째 인자인 new_cpu를 __set_task_cpu() 함수로 전달하며 호출 */
+	__set_task_cpu(p, new_cpu);
+}
+```
+1. 프로세스 스택 최상단 주소에 접근
+2. thread_info 구조체의 cpu 필드에 cpu 인자 저장
+	- __set_task_cpu() 함수 분석
+```c
+static inline void __set_task_cpu(struct task_struct *p, unsigned int cpu)
+{
+	task_thread_info(p)->cpu = cpu;
+}
+```
+	- task_thread_info() 함수는 태스크 디스크립터를 입력으로 받아 프로세스 스택의 최상단 주소를 반환
+	- thread_info 구조체의 cpu 필드에 매개변수로 전달된 cpu를 저장
+	
+
