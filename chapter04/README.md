@@ -1046,3 +1046,70 @@ static inline void __set_task_cpu(struct task_struct *p, unsigned int cpu)
 	- thread_info 구조체의 cpu 필드에 매개변수로 전달된 cpu를 저장
 	
 
+### thread_info 구조체 초기화 코드 분석
+- 프로세스의 태스크 디스크립터와 thread_info 구조체의 관계
+	- task_struct 구조체의 stack 필드는 프로세스 스택의 최상단 주소를 가리킴
+	- 프로세스 스택의 최상단 주소에 있는 thread_info 구조체의 task 필드는 태스크 디스크립터의 주소를 가리킴
+	- 프로세스 스택의 주소나 태스크 디스크립터의 주소만 알면 스택의 최상단 주소에 접근할 수 있음
+
+- dup_task_struct() 함수에서 호출하는 핵심 함수
+	- alloc_task_struct_node() 함수: 슬럽 할당자로 태스크 디스크립터인 task_struct 구조체를 할당받음.
+	- alloc_thread_stack_node() 함수: 프로세스 스택 공간을 할당받음.
+- dup_task_struct
+```c
+static struct task_struct *dup_task_struct(struct *task_struct *orig, int node)
+{
+...
+	// alloc_task_struct_node() 함수를 호출해서 태스크 디스크립터를 할당받음
+	tsk = alloc_task_struct_node(node);
+	if (!tsk)
+		return NULL;
+	// alloc_thread_stack_node() 함수를 호출해서 스택 메모리 공간을 할당받음
+	stack = alloc_thread_stack_node(tsk, node)
+	if (!stack)
+		goto free_tsk;
+		
+	// task_struct 구조체의 stack 필드에 할당받은 스택의 주소를 저장. 할당받은 스택의 최상단 주소를 태스크 디스크립터에 설정하는 동작
+	tsk->stack = stack;
+	// 태스크 디스크립터의 주소를 thread_info 구조체의 task 필드에 저장
+	setup_thread_stack(tsk, orig);
+```
+- setup_thread_stack()
+```c
+static inline void setup_thread_stack(struct task_struct *p, struct task_struct *org)
+{
+	*task_thread_info(p) = *task_thread_info(org);
+	task_thread_info(p)->task = p;
+}
+```
+- 함수 인자
+	- struct task_struct *org: 부모 프로세스의 태스크 디스크립터
+	- struct task_struct *p: 생성한 프로세스의 태스크 디스크립터
+- 코드 분석
+	- 부모 프로세스의 thread_info 구조체의 필드를 자식 프로세스의 thread 구조체 공간에 복사
+	- thread_info 구조체의 task 필드에 태스크 디스크립터 주소를 저장
+- 프로세스의 태스크 디스크립터와 thread_info 구조체의 관계
+	- 커널은 어셈블리 코드로 실행 중인 프로세스의 스택 주소를 언제든지 알아냄
+	- 커널은 프로세스의 스택 최상단 주소와 태스크 디스크립터를 언제든 계산할 수 있음
+- thread_info /task_struct 메모리 할당
+	- alloc_task_struct_node()
+```c
+static struct kmem_cache *task_struct_cachep;
+
+static inline struct task_struct *alloc_task_struct_node(int node)
+{
+	/* kmem_cache_alloc_node() 함수를 호출해 지정한 슬럽 캐시에 대한 메모리를 할당 받음 */
+	return kmem_cache_alloc_node(task_struct_cachep, GFP_KERNEL, node);
+}
+```
+	- alloc_thread_stack_node()
+```c
+static unsigned long *alloc_thread_stack_node(struct task_struct *tsk, int node)
+{
+	/* 페이지 2개 할당했으니 0x2000 크기의 물리 메모리를 (thread_info 구조체로) 확보 */
+	struct page *page = alloc_pages_node(node, THREADINGFO_GFP, THREAD_SIZE_ORDER);
+	
+	/* 0x2000 크기의 물리 메모리를 가진 가상 메모리로 변환해 (thread_info 구조체로) 반환 */
+	return page ? page_address(page) : NULL;
+}
+```
