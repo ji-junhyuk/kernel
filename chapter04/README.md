@@ -1113,3 +1113,36 @@ static unsigned long *alloc_thread_stack_node(struct task_struct *tsk, int node)
 	return page ? page_address(page) : NULL;
 }
 ```
+
+### current 매크로
+- current 매크로는 현재 구동 중인 프로세스의 태스크 디스크립터 주소를 알려줌
+- current 매크로를 통해 직접 태스크 디스크립터 필드에 접근할 수 있음
+- current 매크로는 왜 존재할까?
+	- struct task_struct 타입의 태스크 디스크립터는 커널에서 가장 중요하게 관리하는 자료구조
+	- 커널은 태스크 디스크립터에 접근해 프로세스 정보를 수시로 접근하고 저장하며, 태스크 디스크립터에 들어 있는 속성 정보로 함수의 실행 흐름이 바뀌기 때문이다.
+	
+- get_unused_fd_flags()
+```c
+int get_unused_fd_flags(unsigned flags)
+{
+	return __alloc_fd(current->files, 0, rlimit(RLIMIT_NOFILE), flags);
+}
+EXPORT_SYMBOL(get_unused_fd_flags);
+```
+- __put_task_struct()
+```c
+void __put_task_struct(struct task_struct *tsk)
+{
+	WARN_ON(!tsk->exit_state);
+	WARN_ON(atomic_read(&tsk->usage));
+	WARN_ON(tsk == current);
+}
+```
+- current 매크로의 구현부
+```c
+#define get_current() (current_thread_info()->task)
+#define current get_current()
+```
+- get_current() 함수는 (current_thread_info()->task)로 치환
+- current는 get_current() 매크로 함수로 치환됨
+- current_thread_info() 함수: thread_info 구조체의 시작 주소. thread_info 구조체의 필드 중 task에는 프로세스의 태스크 디스크립터 주소가 저장돼 있음.
