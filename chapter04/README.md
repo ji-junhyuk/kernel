@@ -1146,3 +1146,23 @@ void __put_task_struct(struct task_struct *tsk)
 - get_current() 함수는 (current_thread_info()->task)로 치환
 - current는 get_current() 매크로 함수로 치환됨
 - current_thread_info() 함수: thread_info 구조체의 시작 주소. thread_info 구조체의 필드 중 task에는 프로세스의 태스크 디스크립터 주소가 저장돼 있음.
+
+### current_thread_info 매크로 함수
+```c
+register unsigned long current_stack_pointer asm ("sp"); // 현재 실행중인 스택 포인터 주소를 current_stack_pointer라는 변수에 접근한다.
+
+static inline struct thread_info *current_thread_info(void)
+{
+	return (struct thread_info *)
+		(current_stack_pointer & ~(THREAD_SIZE - 1));
+}
+```
+- 프로세스 스택 주소를 current_stack_pointer 변수로 가져옴
+- 프로세스의 스택 주소를 통해 스택 최상단 주소를 계산해 반환함
+- 6번째 줄 코드의 변환
+	- (current_stack_pointer & ~((0x2000) - 1));
+	- (current_stack_pointer & ~(0x1fff);
+	- (current_stack_pointer & (0xe000);
+- 스택 포인터와 'current_stack_pointer & (0xe000)' 연산을 수행하는 이유
+	- ARM(32비트) 아키텍처에서 0x2000바이트 크기만큼 스택을 지정하는데 그 이유는 커널이 프로세스 스택 주소를 할당할 때 0x2000 바이트를 기준으로 정렬을 맞춰서 할당(페이지부터, 메로리 할당까지 이해해야...)
+	- 프로세스의 스택 주소가 다음과 같을 때 0xE000와 AND 연산으로 프로세스 스택의 최상단 주소를 얻을 수 있음
