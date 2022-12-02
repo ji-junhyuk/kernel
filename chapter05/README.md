@@ -133,3 +133,38 @@
 	- 현재 실행 중인 프로세스 정보를 담고 있는 레지스터 세트
 	- 컨텍스트(레지스터 세트)와 관련한 자료구조
 	- cpu_cotext_save 구조체는 프로세스 스택의 최상단 주소에 위치한 thread_info 구조체의 cpu_context 필드에 저장됨.
+
+### 인터럽트 컨텍스트란: in_interrupt() 함수
+- in_interrupt() 함수란
+	- 현재 실행 중인 코드가 인터럽트 컨텍스트 구간인지 알려주는 역할
+	- in_interrupt()함수가 true를 반환하면 인터럽트 컨텍스트이고, 반대로 false를 반환하면 프로세스 컨텍스트
+- in_interrupt() 함수를 왜 사용할까?
+	- 함수들은 복잡하게 호출되므로 함수 호출 흐름을 간단히 파악하기 어려워 커널 혹은 드라이버 코드에서 볼 수 있는 함수가 '인터럽트 컨텍스트'에서 실행 중인지 분간하기 힘듦.
+- patch code
+```c
+static struct mmc_blk_ioc_data *mmc_blk_ioctl_copy_from_user(
+	struct mmc_blk_ioc_data *idata;
+	int err;
+	
+-	idata = kmalloc(sizeof(*idata), GFP_KERNEL);
++	idata = kmalloc(sizeof(*idata), in_interrupt() ? GFP_ATOMIC : GFP_KERNEL);
+```
+- in_interrupt() 함수가 true를 반환하면 GFP_ATOMIC 플래그, 반대의 경우 GFP_KERNEL 플래그를 적용해 kmalloc() 함수를 호출
+- in_interrupt() 함수가 true를 반환하는 경우 인터럽트 컨텍스트이며 '인터럽트 처리 중'이라고 볼 수 있음
+- 인터럽트를 처리하는 도중에는 빨리 메모리를 할당하는 목적의 코드
+### in_interrupt 함수 코드 분석하기
+- in_interrupt 함수 구현부
+```c
+#define in_interrupt() (irq_count()) // irq_count()함수로 치환
+```
+- irq_count 함수 선언부
+```c
+#define irq_count() (preempt_count() & (HARDIRQ_MASK | SOFTIRQ_MASK | NMI_MASK()
+```
+	- preempt_count() 함수가 반환하는 값과 HARDIRQ_MASK | SOFTIRQ_MASK 비트 마스크에 대해 OR 비트 연산을 수행
+- irq_count() 매크로 함수는 다음과 같이 변환
+	- preempt_count() & 0x1fff00
+- preempt_count() 함수의 정체는 무엇일까?
+	- preempt_count() 함수는 실행 중인 프로세스의 thread_info 구조체의 preempt_count 필드값을 반환
+
+	
