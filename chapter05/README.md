@@ -167,4 +167,6 @@ static struct mmc_blk_ioc_data *mmc_blk_ioctl_copy_from_user(
 - preempt_count() 함수의 정체는 무엇일까?
 	- preempt_count() 함수는 실행 중인 프로세스의 thread_info 구조체의 preempt_count 필드값을 반환
 
-	
+### 인터럽트 컨텍스트란
+- ftrace에서 확인한 인터럽트 컨텍스트
+- 커널 로그에서 확인한 인터럽트 컨텍스트
