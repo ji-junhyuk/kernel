@@ -201,3 +201,15 @@ static struct mmc_blk_ioc_data *mmc_blk_ioctl_copy_from_user(
 	- 커널의 IRQ 서브시스템을 구성하는 함수들이 호출된 후 __handle_irq_event_percpu() 함수를 실행.
 	- 인터럽트에 해당하는 인터럽트 디스크립터를 읽어 속성 정보를 업데이트
 	- 인터럽트 핸들러 함수를 호출
+
+### __irq_svc 동작
+sp 지시자 : 스택 주소
+sup sp, sp #76 ; 0x4c // 현재 스택 주소에서 0x4c만큼 빼는 연산은 프로세스의 스택 공간을 0x4c바이트 만큼 확보
+stm sp, (r1 r2 .. r9, s1 fp ip) // 프로세스 스택 공간에 r1부터 ip 레지스터까지 저장
+ldr r1, [pc, #36] ; // handle_arch_irq 전역변수 로딩
+ldr pc, [r1] // bcm2836_arm_irqchip_handle_irq() 함수 호출
+
+- in_interrupt() 함수 동작 원리
+	- 실행 중인 프로세스의 thread_info 구조체의 preempt_count 필드값에 접근함
+	- 0x1fff00와 AND 비트 연산한 결과
+- __irq_svc 레이블에서 레지스터 스택 푸시 확인
