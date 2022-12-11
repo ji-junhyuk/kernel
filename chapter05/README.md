@@ -218,7 +218,7 @@ ldr pc, [r1] // bcm2836_arm_irqchip_handle_irq() 함수 호출
 - 인터럽트 벡터(vector_irq)이후 __irq_svc 레이블에서 인터럽트 핸들러까지 이어지는 실행 흐름
 1. 커널이 인터럽트를 처리하고 있는 도중 인터럽트가 발생했을 때 리턴 처리
 2. 인터럽트 정보를 인터럽트 디스크립터에 저장
-#3. 가끔 전달되는 쓰레기 인터럽트 값에 대한 예외 처리
+3. 가끔 전달되는 쓰레기 인터럽트 값에 대한 예외 처리
 
 - generic_hadle_irq
 	- 정수형 인터럽트 번호인 irq 인자와 함께 irq_to_desc() 함수를 호출해 인터럽트 디스크립터 주소를 desc 변수에 반환
@@ -277,3 +277,48 @@ ldr pc, [r1] // bcm2836_arm_irqchip_handle_irq() 함수 호출
 	- IRQF_TRIGGER_HIGH 플래그: 플래그 신호가 HIGH로 유지될 때
 	- IRQF_TRIGGER_LOW 플래그: 플래그 신호가 LOW로 유지될 때
 
+### 인터럽트 디스크립터
+- 인터럽트 디스크립터란
+	- 인터럽트의 상세 동작과 인터럽트의 속성 정보를 모두 담고 있는 자료이자 객체
+	- 커널은 인터럽트 디스크립터인 irq_desc 구조체로 인터럽트별 속성 정보를 관리
+- 리눅스 커널에서 디스크립터 의미
+	- 커널이 특정 드라이버나 메모리 같은 중요한 객체를 관리하려고 쓰는 자료구조
+- 주요 디스크립터 예시
+	- 태스크 디스크립터: struct task_struct
+	- 페이지 디스크립터: struct page
+	- 파일 디스크립터: struct files_struct
+```c
+struct irq_desc {
+	struct irq_common_data irq_common_data;
+	struct irq_dta			irq_data;
+	unsigned int __percpu	*kstat_irqs;
+	irq_flow_handler_t		handle_irq;
+	
+	struct irqaction		*action
+	unsigned int			status_use_accessors;
+}
+```
+- sturct irq_common_data: 커널에서 처리하는 irq_chip 관련 함수에 대한 정보 저장
+- struct irq_data irq_data: 인터럽트 번호와 해당 하드웨어 핀 번호
+- unsigned int __percpu *kstat_irqs:  인터럽트가 발생한 횟수 저장
+- struct irqaction *action: 인터럽트의 주요 속성 정보를 저장
+
+- 인터럽트 세부 속성 정보를 저장하는 irqaction 구조체
+```c
+struct irqaction {
+	irq_handler_t	handler;
+	void			*dev_id;
+	void __percpu	*percpu_dev_id;
+	struct irqaction *next;
+	irq_handler_t	thread_fn;
+	
+	unsigned int	irq;
+	unsigned int	flags;
+	
+} ____cacheline_internodealigned_in_smp;
+```
+- irq_hander_t handler: 인터럽트 핸들러의 함수 주소 저장
+- void *dev_id: 인터럽트 핸들러에 전달되는 매개변수로 보통 디바이스 드라이버 전체를 핸들링하는 구조체의 주소를 저장
+- irq_hadnelr_t thread_fn: 인터럽트를 IRQ 스레드(threaded IRQ)방식으로 처리할 때 IRQ 스레드 처리 함수의 주소를 저장. IRQ 스레드를 지정하지 않으면 NULL을 저장되며 대부분의 경우 thead_fn은 NULL
+- unsigned int irq: 인터럽트 번호
+- unsigned int flags: 인터럽트 플래그 설정 필드
