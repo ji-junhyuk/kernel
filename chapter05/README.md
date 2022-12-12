@@ -322,3 +322,25 @@ struct irqaction {
 - irq_hadnelr_t thread_fn: 인터럽트를 IRQ 스레드(threaded IRQ)방식으로 처리할 때 IRQ 스레드 처리 함수의 주소를 저장. IRQ 스레드를 지정하지 않으면 NULL을 저장되며 대부분의 경우 thead_fn은 NULL
 - unsigned int irq: 인터럽트 번호
 - unsigned int flags: 인터럽트 플래그 설정 필드
+
+### 인터럽트 발생 횟수는 어떻게 저장할까?
+- 인터럽트의 속성 정보와 함께 인터럽트 발생 횟수를 확인
+$ cat /proc/interrupts
+- irq_desc 구조체에서 인터럽트 발생 횟수를 저장하는 필드
+	- percpu 타입의 kstat_irqs 필드에 인터럽트 발생 횟수 저장
+- kstat_incr_irqs_this_cpu()
+```c
+static inline void kstat_iner_irq_this_cpu(struct irq_desc *desc)
+{
+	__this_cpu_inc(*desc->kstat_irqs);
+	__this_cpu_inc(kstat.irqs_sum);
+}
+unsigned int ksat_irqs_cpu(unsigned int irq, int cpu)
+{
+	struct irq_desc *desc = irq_to_desc(irq);
+	return desc && desc->kstat_irqs ? *per_cpu_ptr(desc->kstat_irqs, cpu) : 0;
+}
+- 정수형 인터럽트 번호를 입력으로 irq_to_desc()함수를 호출해 해당 인터럽트 디스크립터의 주소를 desc변수에 저장
+- irq_desc 구조체의 kstat_irqs 필드에 저장된 인터럽트 처리 횟수 반환
+```
+
