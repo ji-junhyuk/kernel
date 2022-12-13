@@ -344,3 +344,31 @@ unsigned int ksat_irqs_cpu(unsigned int irq, int cpu)
 - irq_desc 구조체의 kstat_irqs 필드에 저장된 인터럽트 처리 횟수 반환
 ```
 
+### 인터럽트는 언제 비활성화해야 할까?
+- 특정 상황에서 인터럽트가 발생하면 안 되는 조건
+	- SoC에서 정의한 하드웨어 블록에 정확한 시퀀스를 줘야 할 경우
+	- 시스템이 유휴 상태에 진입하기 직전의 '시스템의 상태 정보'값을 저장하는 동작
+	- 각 디바이스 드라이버가 서스펜드 모드로 진입할 때 디바이스 드라이버에 데이터 시트에서 명시한 대로 정확한 특정 시퀀스를 줘야 할 경우
+	- 익셉션(Memory Abort)이 발생해서 시스템 리셋을 시키기 전
+
+- 인터럽트를 비활성화(CPU 아키텍처에 의존적)
+	- local_irq_disabled() : 해당 CPU 인터럽트 라인 비활성화
+	- local_irq_enabled() : 해당 CPU 인터럽트 라인을 활성화
+```c
+static inline void arch_local_irq_disable(void)
+{
+	asm volatile(
+		"	cspid	i	@ arch_loca "
+		:
+		:
+		: "memory", "cc");
+}
+- cspid i 라는 ARM 명령어를 실행해 해당 CPU 인터럽트 라인을 비활성화
+```
+- 인터럽트를 비활성화하는 동작 관련 정리
+	- 커널 드라이버에서 인터럽트가 발생하면 안되는 코드 구간을 체크
+	- 코드 구간의 시작 부분에 해당 CPU 인터럽트 라인을 비활성화하는 local_irq_disabled() 함수 호출
+	- 코드 구간의 끝 부분에 해당 CPU 인터럽트 라인을 활성화하는 local_irq_enabled() 함수 호출
+- 인터럽트 비활성화/활성화하는 코드 작성 시 주의 사항
+	- local_irq_disabled() 함수를 호출하면 반드시 local_irq_enabled() 함수를 호출해야 함
+	- local_irq_disalbed() 함수만 호출하면 시스템이 오작동함
