@@ -71,17 +71,42 @@
 	- irq/86-mmc1 프로세스는 "mmc1"이라는 이름의 86번 인터럽트를 처리하는 IRQ 스레드로 해석 가능
 
 
+### IRQ 스레드는 언제 생성할까?
+- 디바이스 드라이버의 초기화 코드(부팅 과정)에서 request_threaded_irq() 함수를 호출해 IRQ 스레드를 생성
+- IRQ 스레드는 생성된 후 시스템 전원이 공급돼 동작하는 동안 해당 인터럽트 후반부를 처리하는 기능을 수행
+- IRQ 스레드 처리 함수
+	- 인터럽트 별로 지정한 IRQ 스레드별로 후반부를 처리하는 함수를 의미
+- IRQ 스레드 핸들러 함수
+	- irq_thread() 함수를 뜻하며 인터럽트별로 지정된 IRQ 스레드 처리 함수를 호출하는 역할을 수행
+	- 각 인터럽트별로 지정한 IRQ 스레드가 깨어나면 공통으로 IRQ 스레드 핸들러 함수인 irq_thread()가 호출됨
+	- 3개의 IRQ 스레드가 있으면 3개의 IRQ 스레드의 핸들러 함수는 모두 irq_thread()임
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+- request_threaded_irq() 함수의 역할
+	- 전달한 IRQ 스레드 정보를 해당 인터럽트 디스크립터에 설정
+	- ktrehad_create() 함수를 호출해서 IRQ tㅡ레드를 생성
+- 매개변수
+	- irq, unsigned int, 인터럽트 번호
+	- handler, irq_handler_t, 인터럽트 핸들러의 주소
+	- thread_fn, irq_hander_t, IRQ 스레드 처리 함수의 주소
+	- flags, unsigned long, 인터럽트 핸들링 플래그
+	- name, const char, 인터럽트 이름
+- __setup_irq() 함수
+	- IRQ 스레드 처리 함수가 등록됐는지 점검
+	- 만약 IRQ 스레드가 등록됐으면 setup_irq_thread() 함수를 호출해 IRQ 스레드를 생성
+- setup_irq_thread() 함수 10번째 줄
+	- ktrhead_create()함수 호출하여 커널 스레드 생성
+	- kthread_create()함수 호출 시 지정하는 인자
+		- irq_thread: IRQ 스레드 핸들러 함수
+		- new: IRQ 스레드 핸들러인 irq_thread() 함수로 전달되는 매개변수(irqaction)
+		- irq: 인터럽트 번호
+		- new->name: 인터럽트 이름
+- IRQ 스레드 처리 함수
+	- 인터럽트별로 지정한 IRQ 스레드별로 후반부를 처리하는 함수를 의미.
+- IRQ 스레드 핸들러 함수
+	- irq_thread() 함수를 뜻하며 인터럽트별로 지정된 IRQ 스레드 처리 함수를 호출하는 역할을 수행
+	- 각 인터럽트별로 지정한 IRQ 스레드가 깨어나면 공통으로 IRQ 스레드 핸들러 함수인 irq_thread()가 호출됨
+	- 3개의 IRQ 스레드가 있으면 3개의 IRQ 스레드의 핸들러 함수는 모두 irq_thread()임
+	
+### irq_thread()에 전달되는 매개변수
+- irq 스레드가 실행될 때 irq_thread() 함수가 실행되는데 함수의 인자로 void 타입의 data 포인터를 전달
+- irq_thread() 함수의 4번째 줄을 보면, 이 포인터를 sturct irqaction * 타입으로 캐스팅
