@@ -110,3 +110,7 @@
 ### irq_thread()에 전달되는 매개변수
 - irq 스레드가 실행될 때 irq_thread() 함수가 실행되는데 함수의 인자로 void 타입의 data 포인터를 전달
 - irq_thread() 함수의 4번째 줄을 보면, 이 포인터를 sturct irqaction * 타입으로 캐스팅
+
+### IRQ 스레드 생성 실습
+
+
