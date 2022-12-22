@@ -128,3 +128,9 @@
 - 정확히 IRQ 스레드는 언제 실행을 시작할까?
 	- IRQ 스레드를 깨우면 스케줄러는 우선순위를 고려한 후 IRQ 스레드를 실행
 	- 이후 IRQ 스레드의 핸들러인 irq_thread() 함수가 호출됨
+
+### IRQ 스레드 핸들러 관련 함수
+- irq_thread() 함수
+- irq_thread_fn()
+	- irqaction 구조체의 thread_fn 필드로 IRQ 스레드 처리 함수를 호출
+	- thread_fn 필드는 함수 포인터와 비슷한 동작을 수행
