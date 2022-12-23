@@ -134,3 +134,27 @@
 - irq_thread_fn()
 	- irqaction 구조체의 thread_fn 필드로 IRQ 스레드 처리 함수를 호출
 	- thread_fn 필드는 함수 포인터와 비슷한 동작을 수행
+
+### Soft IRQ
+- Soft IRQ는 리눅스 커널을 이루는 핵심 기능 중 하나
+- Soft IRQ 서비스의 형태로 커널의 타이머, 스케줄링은 물론 네트워크 시스템이 동작
+- Soft IRQ는 인터럽트 후반부 기법으로 사용됨
+
+### SOft IRQ 서비스
+- 리눅스 커널에서는 10가지 Soft_IRQ 서비스를 지원
+- Soft IRQ 서비스는 부팅할 때 open_softirq()라는 함수를 써서 등록
+```c
+const char *const softirq_to_name[NR_SOFTIRQS] = {
+"HI", "TIMER" ...
+```
+- 라이프 사이클
+	- 1단계: 부팅 과정
+		- 부팅 과정에서 open_softirq() 함수를 호출해 Soft IRQ 서비스 등록
+	- 2단계: 인터럽트 처리
+		- 인터럽트 핸들러(인터럽트 컨텍스트)나 인터럽트 핸드럴 내에서 호출한 서브 함수에서 raise_softirq() 함수를 호출해 Soft IRQ 서비스를 요청
+	- 3단계: Soft IRQ 컨텍스트
+		- _do_softirq() 함수에서 이미 요청한 Soft IRQ 서비스를 실행
+- Soft IRQ 서비스 핸들러
+	- Soft IRQ 서비스 핸들러는 Soft IRQ 서비스를 실행할 때 호출되는 함수
+	- 부팅 과정에서 open_softirq() 함수를 호출해 softirq_vec이라는 전역변수에 등록
+
