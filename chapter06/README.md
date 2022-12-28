@@ -173,3 +173,8 @@ const char *const softirq_to_name[NR_SOFTIRQS] = {
 	- ksoftirqd 프로세스가 깨어나 3단계에서 마무리하지 못한 Soft IRQ 서비스 핸들러를 실행
 		- wakeup_softirqd() 함수를 호출해서 ksoftirqd 프로세스를 깨움
 		- __do_softirq() 함수 종료
+	
+### 후반부 기법으로 Soft IRQ를 언제 쓸까?
+- Soft IRQ 기법은 인터럽트 발생 빈도가 높거나 인터럽트 후반부를 빨리 처리해야 할 때 사용
+- 인터럽트 핸들러 호출 이후 바로 Soft IRQ 서비스를 실행하기 때문
+- 인터럽트 발생 빈도가 높거나 인터럽트 후반부를 빨리 처리해야 하는 디바이스 드라이버에서는 Soft IRQ 인터페이스인 태스크릿을 사용하면 됨
