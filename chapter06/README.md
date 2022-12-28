@@ -158,3 +158,18 @@ const char *const softirq_to_name[NR_SOFTIRQS] = {
 	- Soft IRQ 서비스 핸들러는 Soft IRQ 서비스를 실행할 때 호출되는 함수
 	- 부팅 과정에서 open_softirq() 함수를 호출해 softirq_vec이라는 전역변수에 등록
 
+### Soft IRQ 전체 실행 흐름
+- 1단계
+	- 인터럽트가 발생하면 해당 인터럽트 핸들러에서 Soft IRQ 서비스 요청
+	- raise_softirq_irqoff()함수를 호출
+- 2단계
+	- 인터럽트 서비스 루틴 동작이 끝나면 irq_exit()함수를 호출
+	- Soft IRQ 서비스 요청 여부를 점검해 요청한 Soft IRQ 서비스가 있으면 __do_softirq() 함수를 호출해서 해당 Soft IRQ 서비스 핸들러를 실행
+	- Soft IRQ 서비스 요청이 없으면 irq_exit() 함수는 바로 종료
+- 3단계
+	- __do_softirq() 함수에서 Soft IRQ 서비스 핸들러를 호출
+	- Soft IRQ 서비스 핸들러 처리 시간이 2ms이상이거나 10번 이상 Soft IRQ 서비스 핸들러를 처리했다면 다음 동작을 수행
+- 4단계
+	- ksoftirqd 프로세스가 깨어나 3단계에서 마무리하지 못한 Soft IRQ 서비스 핸들러를 실행
+		- wakeup_softirqd() 함수를 호출해서 ksoftirqd 프로세스를 깨움
+		- __do_softirq() 함수 종료
