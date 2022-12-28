@@ -193,4 +193,31 @@ const char *const softirq_to_name[NR_SOFTIRQS] = {
 - 3단계: Soft IRQ 서비스 실행
 	- 요청한 Soft IRQ 서비스를 실행
 
+### Soft IRQ 서비스는 어떻게 등록할까?
+- 다음 규칙에 따라 ofen_softirq() 함수 호출
+	- open_softirq(Soft IRQ 서비스의 아이디, Soft IRQ 서비스의 핸들러);
+- Soft IRQ 서비스가 실행하면 해당 Soft IRQ 서비스 핸들러를 실행됨
 
+- TIMER_SOFTIRQ Soft IRQ 서비스 핸들러를 등록하는 코드
+```c
+void __init init_timers(void)
+{
+	init_timer_cpus();
+	open_softirq(TIMER_SOFTIRQ, run_tiemr_softirq);
+}
+```
+- Soft IRQ의 TIMER_SOFTIRQ 서비스를 실행하면 run_tiemr_softirq() 함수를 호출해달라는 의미로 해석
+- open_softirq() 함수
+```c
+void open_softirq(int nr, void (*action)(struct softirq_action *))
+{
+	softirq_vec[nr].action = action;
+}
+```
+- 첫번째 정수형 타입인 nr 인자에 해당하는 softirq_vec 배열 원소의 action 필드에 두 번째 인자를 저장
+- softirq_vec 배열의 nr 인덱스에 해당하는 원소의 action 필드에 Soft IRQ 서비스 핸들러를 할당
+
+### Soft IRQ 서비스 핸들러 관련 핵심 자료구조
+- softirq_vec
+	- softirq_vec 배열은 NR_SOFTIRQS 크기의 배열로 Soft IRQ 서비스의 종류별로 Soft IRQ 서비스 핸들러 함수의 주소를 저장
+	- struct softirq_action 타입
