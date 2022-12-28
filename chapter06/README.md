@@ -178,3 +178,19 @@ const char *const softirq_to_name[NR_SOFTIRQS] = {
 - Soft IRQ 기법은 인터럽트 발생 빈도가 높거나 인터럽트 후반부를 빨리 처리해야 할 때 사용
 - 인터럽트 핸들러 호출 이후 바로 Soft IRQ 서비스를 실행하기 때문
 - 인터럽트 발생 빈도가 높거나 인터럽트 후반부를 빨리 처리해야 하는 디바이스 드라이버에서는 Soft IRQ 인터페이스인 태스크릿을 사용하면 됨
+
+### Soft IRQ 서비스
+- softirq_to_name 전역변수
+- 열거형으로 정의
+
+### Soft IRQ 서비스 타입
+
+### Soft IRQ 서비스 핸들러는 언제 등록할까?
+- 1단계: Soft IRQ 서비스 등록
+	- 부팅 과정에서 open_softirq() 함수를 호출해 Soft IRQ서비스를 등록
+- 2단계: Soft IRQ 서비스 요청
+	- 인터럽트 컨텍스트에서 Soft IRQ 서비스를 요청
+- 3단계: Soft IRQ 서비스 실행
+	- 요청한 Soft IRQ 서비스를 실행
+
+
