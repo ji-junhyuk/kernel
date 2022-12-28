@@ -221,3 +221,6 @@ void open_softirq(int nr, void (*action)(struct softirq_action *))
 - softirq_vec
 	- softirq_vec 배열은 NR_SOFTIRQS 크기의 배열로 Soft IRQ 서비스의 종류별로 Soft IRQ 서비스 핸들러 함수의 주소를 저장
 	- struct softirq_action 타입
+
+### Soft IRQ 서비스 핸들러의 등록과정 실습
+
