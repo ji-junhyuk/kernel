@@ -224,3 +224,16 @@ void open_softirq(int nr, void (*action)(struct softirq_action *))
 
 ### Soft IRQ 서비스 핸들러의 등록과정 실습
 
+### Soft IRQ 서비스 요청을 점검하는 전체흐름
+- 전체 흐름도
+- 인터럽트 컨텍스트 종료 상태 저장
+- Soft IRQ 컨텍스트 실행 상태 저장 
+
+- 1. 인터럽트 처리
+	- 인터럽트 핸들러나 인터럽트 핸들러 서브루틴에서 호출하는 함수의 동작을 의미
+	- _raise_softirq_irqoff()/or_softirq_pending() 함수가 실행돼 Soft IRQ 서비스를 요청
+- 2. Soft IRQ 서비스 실행
+	- irq_exit()함수를 호출해 Soft IRQ 서비스 요청이 있었는지 확인
+	- irq_stat[cpu].__softirq_pending 자료구조를 점검
+- 3. ksoftirqd/[cpu] 프로세스
+	- ksoftirqd/cpu 커널 스레드도 irq_stat[cpu].__softirq_pending 자료구조에 접근해 Soft IRQ 서비스를 요청했는지 체크
