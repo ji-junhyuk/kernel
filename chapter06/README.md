@@ -237,3 +237,35 @@ void open_softirq(int nr, void (*action)(struct softirq_action *))
 	- irq_stat[cpu].__softirq_pending 자료구조를 점검
 - 3. ksoftirqd/[cpu] 프로세스
 	- ksoftirqd/cpu 커널 스레드도 irq_stat[cpu].__softirq_pending 자료구조에 접근해 Soft IRQ 서비스를 요청했는지 체크
+
+### Soft IRQ 서비스 요청 관련 함수
+- Soft IRQ 서비스를 요청할 때 실행되는 함수 목록
+	- raise_softirq()
+	- __rqiase_softirq_irqoff()
+- Soft IRQ 서비스를 요청한다는 표현
+	- 일부 리눅스 커널 자료에서는 raise_softirq() 함수의 동작을 'Soft IRQ를 올린다'라고 표현
+	- Soft IRQ의 전체 실행 흐름상 'Soft IRQ를 올린다'라는 표현 대신 'Soft IRQ 서비스를 요청한다'라고 명시함.
+
+```c
+void raise_softirq(unsigned int nr)
+{
+	unsigned long flags;
+	
+	local_irq_save(flags);
+	raise_softirq_irqoff(nr);
+	local_irq_restore(flags);
+}
+```
+- 인자: 정수형인 Soft IRQ 인덱스
+- local_irq_restore 함수를 호출해 CPU 라인의 인터럽트를 비활성화
+```c
+inline void raise_softirq_irqoff(unsigned int nr)
+{
+	__raise_softirq_irqoff(nr);
+	
+	if (!in_interrupt())
+		wakeup_softirqd();
+}
+```
+- 현재 실행 코드가 인터럽트 컨텍스트인지 점검. 인터럽트 컨텍스트가 아니면 wakeup_softirqd함수를 통해 kosftirqd 스레드를 깨움
+- 인터럽트 컨텍스트가 아닐 때도 soft IRQ 서비스 요청을 할 수 있음
