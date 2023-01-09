@@ -269,3 +269,32 @@ inline void raise_softirq_irqoff(unsigned int nr)
 ```
 - 현재 실행 코드가 인터럽트 컨텍스트인지 점검. 인터럽트 컨텍스트가 아니면 wakeup_softirqd함수를 통해 kosftirqd 스레드를 깨움
 - 인터럽트 컨텍스트가 아닐 때도 soft IRQ 서비스 요청을 할 수 있음
+
+### irq_stat 전역변수 분석
+- irq_stat[cpu]__softirq_pending
+	- 커널은 SoftIRQ 서비스 요청이 있었는지 확인하는 변수
+	- irq_stat은 배열이 아니고 percpu 타입 // CPU코어 갯수만큼 메모리 공간이 위치해있겠구나!
+
+- or_softirq_pending() 매크로 함수에 접근하는 코드
+```c
+void	__raise_softirq_irqoff(unsigned int nt)
+{
+	trace_softirq_raise(nr);
+	or_softirq_pending(1UL << nr);
+}
+```
+- or_softirq_pending() 매크로 함수(Soft IRQ서비스 요청)의 실체
+	- irq_stat[cpu]__softirq_pending |= x;
+- local_softirq_pending() 매크로 함수(Soft IRQ 서비스 요청 확인)의 실체
+	- return irq_stat[cpu]__softirq_pending
+
+- irq_stat 변수의 예시
+```c
+(static irq_cpustat_t [4]) irq_stat = { 
+	[0] = (
+		(unsigned int) __ softirq_pending = 0x1,
+	[1] = (
+		(unsigned int) __ softirq_pending = 0x2,
+	...
+```
+
