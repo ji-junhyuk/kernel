@@ -298,3 +298,23 @@ void	__raise_softirq_irqoff(unsigned int nt)
 	...
 ```
 
+### Soft IRQ 서비스를 요청했는지는 누가 어떻게 점검할까?
+- local_softirq_pending() 함수
+	- 커널은 Soft IRQ 서비스 요청 여부를 알려주는 local_softirq_pending() 함수를 제공
+	- local_softirq_pending() 함수를 호출했는데 true를 반환하면 Soft IRQ 서비스를 요청했다고 판단
+- local_softirq_pending() 함수를 호출하는 부분
+	- 인터럽트 핸들러 처리를 마무리한 후 호출하는 irq_exit() 함수
+	- ksoftirqd 스레드 핸들러 함수인 run_ksoftirqd() 함수
+- soft_IRQ는 percpu타입으로 cpu 코어별로 동작한다.
+
+### 동작 정리
+1. Soft IRQ 서비스는 어떻게 요청할까?
+	- 인터럽트 핸들러에서 raise_softirq() 함수나 __raise_softirq_irqoff() 함수를 호출한다. 이러한 함수에서or_softirq_pending() 함수를 호출해서 Soft IRQ 서비스를 요청
+
+2. Soft IRQ 서비스 요청은 어느 코드에서 점검할까
+	- 인터럽트 핸들러 실행을 마친 후 호출되는 irq_exit() 함수 혹은 ksoftirqd 스레드 핸들러인 run_ksoftirqd() 함수에서 local_softirq_pending() 함수를 호출해 Soft IRQ 서비스를 요청했는지 확인
+
+3. Soft IRQ 서비스 요청을 할 때 변경되는 자료구조는 무엇인가?
+- percpu 타입의 irq_stat__soft_pending 변수
+- or_softirq_pending 함수를 호출하면 percpu 타입의 irq_stat__soft_pending 변수에 Soft IRQ 서비스를 요청했다는 정보를 설정
+- local_softirq_pending()함수는 percpu타입의 irq_stat__soft_pending 변수에 접근해 Soft IRQ 서비스 요청이 있었는지 확인
